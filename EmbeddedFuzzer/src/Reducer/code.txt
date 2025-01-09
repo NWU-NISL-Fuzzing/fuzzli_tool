@@ -1,0 +1,9 @@
+var NISLFuzzingFunc = function () {
+    var a = 4;
+    var b = 2;
+    print(b);
+    return a >>> (a = 2);
+};
+var NISLCallingResult = NISLFuzzingFunc();
+
+print(NISLCallingResult);

@@ -1,0 +1,25 @@
+{
+  "db_path": "/home/yhy/workspace/top2000corpus-20210303.db",
+  "workspace": "/home/yhy/workspace",
+  "classify_db": "mysql://root:nisl@10.15.10.113:3306/yhy113?charset=utf8",
+  "engine_parser_config_path": "./resources/enginesName.json",
+  "testbeds": [
+    "/home/engines/hermes/hermes-0.12.0/build_release/bin/hermes -w",
+    "/home/engines/quickjs/quickjs-2021-03-27/qjs",
+    "/home/engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry",
+    "/home/engines/jerryscript/jerryscript-edd2f20/jerryscript/build/bin/jerry",
+    "/home/engines/XS/moddable-3.7.6/build/bin/lin/release/xst",
+    "/home/engines/duktape/duktape-2.7.0/duk",
+    "/home/engines/mujs/mujs-1.3.2/build/release/mujs"
+  ],
+  "ESApis": {
+    "function": "./resources/ES262-APIs/function.txt",
+    "constructor": "./resources/ES262-APIs/constructor.txt",
+    "classMethod": "./resources/ES262-APIs/classMethod.txt",
+    "prototypeMethod": "./resources/ES262-APIs/prototypeMethod.txt"
+  },
+  "harness": {
+    "mode": -1,
+    "processes_num": -1
+  }
+}

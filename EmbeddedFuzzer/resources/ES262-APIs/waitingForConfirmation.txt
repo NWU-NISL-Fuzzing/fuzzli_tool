@@ -1,0 +1,8 @@
+NativeError
+%ArrayIteratorPrototype%.next
+%AsyncFromSyncIteratorPrototype%.next
+%AsyncFromSyncIteratorPrototype%.return
+%AsyncFromSyncIteratorPrototype%.throw
+%MapIteratorPrototype%.next
+%SetIteratorPrototype%.next
+%StringIteratorPrototype%.next
