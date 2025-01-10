@@ -59,7 +59,7 @@ class Comparision:
                         harness_result = uniformed_harness_result
                         differential_test_result = uniformed_differential_test_result
                 except BaseException as e:
-                    logging.warning("出bug了")
+                    logging.warning("Something error!!")
                     logging.warning(e)
                     differential_test_result = Result.differential_test(harness_result)
                 if len(differential_test_result) == 0:
