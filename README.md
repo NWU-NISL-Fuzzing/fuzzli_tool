@@ -27,6 +27,30 @@ cd EmbeddedFuzzer
 python main.py
 ```
 
+The core function is `run`. FuzzLi first generates seed programs by the following statement:
+
+```
+original_test_case = self.config.callable_processor.get_self_calling(simple)
+```
+
+Then, it obtains test cases by mutating seed programs.
+
+```
+mutated_test_case_list = self.mutationByFlag(flag, original_test_case)
+```
+
+The third step is differential testing.
+
+```
+differential_test_result = Result.differential_test(harness_result)
+```
+
+Finally, it simplified anomalies.
+
+```
+simplified_test_case = self.config.reducer.reduce(harness_result)
+```
+
 
 
 ## Core Files/Folders
