@@ -1,1 +1,6 @@
 count_lines.py
+**/__pycache__/
+engines
+engines.zip
+EmbeddedFuzzer/node_modules
+worsspace/*.db

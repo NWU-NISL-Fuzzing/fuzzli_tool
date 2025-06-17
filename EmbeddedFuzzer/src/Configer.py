@@ -1,4 +1,5 @@
 import json
+import sqlite3
 
 from Harness import *
 from Mutator.mutation import Mutator
@@ -59,8 +60,8 @@ class Config:
             config = json.load(f)
         simple_db = pathlib.Path(config["db_path"]).absolute().resolve()
         if not simple_db.is_file() or not simple_db.exists():
-            
-            raise FileNotFoundError(f"Corpus db file not exist: {simple_db}")
+            conn = sqlite3.connect(simple_db)
+            # raise FileNotFoundError(f"Corpus db file not exist: {simple_db}")
         
         classify_db = pathlib.Path(config["classify_db"])
         
