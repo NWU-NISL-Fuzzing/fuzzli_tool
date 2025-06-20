@@ -1,5 +1,5 @@
 {
-  "db_path": "../workspace/top2000corpus-20250102.db",
+  "db_path": "../workspace/top2000corpus-20250619.db",
   "workspace": "../workspace",
   "classify_db": "mysql://root:nisl@localhost:3306/classify?charset=utf8",
   "engine_parser_config_path": "./resources/enginesName.json",

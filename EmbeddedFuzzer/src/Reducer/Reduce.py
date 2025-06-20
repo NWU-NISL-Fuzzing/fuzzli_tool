@@ -28,7 +28,7 @@ class Reducer:
         except Exception as r:
             
             logging.info("Failed to extract AST. ")
-            [simplified_test_case, new_bugs_list] = reduce_by_line.simple_by_statement(harness_result)
+            [simplified_test_case, new_bugs_list] = reduce_by_line.sample_by_statement(harness_result)
             self.mutated_harness_result_list = new_bugs_list
             return self.beautify_test_case(simplified_test_case)
 

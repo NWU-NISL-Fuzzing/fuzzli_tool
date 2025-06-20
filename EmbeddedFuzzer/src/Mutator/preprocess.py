@@ -108,9 +108,9 @@ def saveNumber(testcase: str):
     
     
     
-    conn = sqlite3.connect('../EmbeddedFuzzer/xxx/corpus-20240223.db')
+    conn = sqlite3.connect('../EmbeddedFuzzer/data/corpus-20240223.db')
     cursor = conn.cursor()
-    conn.execute("UPDATE corpus SET flag = ? WHERE simple = ?", [string_data, testcase])
+    conn.execute("UPDATE corpus SET flag = ? WHERE sample = ?", [string_data, testcase])
     
     conn.commit()
     
@@ -118,24 +118,24 @@ def saveNumber(testcase: str):
 
 
 def save():
-    conn = sqlite3.connect('../EmbeddedFuzzer/xxx/corpus-20240223.db')
+    conn = sqlite3.connect('../EmbeddedFuzzer/data/corpus-20240223.db')
     cursor = conn.cursor()
 
     
-    cursor.execute("SELECT simple FROM corpus where flag=0")
+    cursor.execute("SELECT sample FROM corpus where flag=0")
     rows = cursor.fetchall()
 
     
-    simple_data_list = []
+    sample_data_list = []
 
     
     for row in rows:
-        simple_data = row[0]  
-        simple_data_list.append(simple_data)  
+        sample_data = row[0]  
+        sample_data_list.append(sample_data)  
 
     
     count = 0  
-    for i, data in enumerate(simple_data_list, start=1):
+    for i, data in enumerate(sample_data_list, start=1):
         saveNumber(data)
         count += 1  
         if count % 1000 == 0:  
@@ -151,17 +151,17 @@ def save():
 
 
 def saveTest():
-    conn = sqlite3.connect('../EmbeddedFuzzer/xxx/corpus-20240223.db')
+    conn = sqlite3.connect('../EmbeddedFuzzer/data/corpus-20240223.db')
    
     cursor = conn.cursor()
-    cursor.execute("SELECT simple FROM corpus")
+    cursor.execute("SELECT sample FROM corpus")
     rows = cursor.fetchall()
-    simple_data_list = []
+    sample_data_list = []
     for row in rows:
-        simple_data = row[0]
-        simple_data_list.append(simple_data)
+        sample_data = row[0]
+        sample_data_list.append(sample_data)
     count = 0
-    for i, data in enumerate(simple_data_list, start=1):
+    for i, data in enumerate(sample_data_list, start=1):
         getnumber(data)
         count += 1
         if count % 1000 == 0: 

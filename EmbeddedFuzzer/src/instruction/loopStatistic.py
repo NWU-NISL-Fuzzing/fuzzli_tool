@@ -62,20 +62,20 @@ def main(db_path: str):
     counter_dict = dict()
     delimiter = "\n\n\n==============================================================\n\n\n"
     content = ""
-    simple_num = 0
+    sample_num = 0
     try:
         db = DBOperation(db_path)
-        simple_list = db.query_corpus(unused_only=False)
+        sample_list = db.query_corpus(unused_only=False)
         
     finally:
         db.close()
     try:
-        for simple in tqdm.tqdm(simple_list):
-            simple_count = get_loop_statement_num(simple)
-            counter_dict = union_dict(counter_dict, simple_count)
-            if sum_dict_value(simple_count) > 0:  
-                content += f"simple {simple_num + 1}:\n" + str(simple_count) + "\n" + simple + delimiter
-                simple_num += 1
+        for sample in tqdm.tqdm(sample_list):
+            sample_count = get_loop_statement_num(sample)
+            counter_dict = union_dict(counter_dict, sample_count)
+            if sum_dict_value(sample_count) > 0:  
+                content += f"sample {sample_num + 1}:\n" + str(sample_count) + "\n" + sample + delimiter
+                sample_num += 1
     finally:
         p = pathlib.Path.cwd() / (db_path.split("/")[-1][:-3] + ".txt")
         p.write_text(content)

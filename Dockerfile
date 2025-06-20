@@ -8,10 +8,10 @@ ENV http_proxy="http://10.15.22.96:7810"
 ENV https_proxy="http://10.15.22.96:7810"
 RUN apt-get -y update
 
-RUN apt-get install -y python3-pip openssh-server zip vim git nodejs npm
+RUN apt-get install -y python3-pip openssh-server zip vim git nodejs npm pkg-config mysql-server screen
 RUN ln -snf /usr/bin/python3 /usr/bin/python
 RUN ln -snf /usr/bin/pip3 /usr/bin/pip
-RUN pip install sqlalchemy PyExecJS jsbeautifier xeger tqdm lithium-reducer
+RUN pip install sqlalchemy mysqlclient PyExecJS jsbeautifier xeger tqdm lithium-reducer termcolor
 
 RUN mkdir /var/run/sshd
 RUN echo 'root:htm123456**' | chpasswd

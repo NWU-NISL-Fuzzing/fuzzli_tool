@@ -37,11 +37,11 @@ class DBOperation:
     
     def query_corpus(self, unused_only=True) -> List[str]:
 
-        sql = "select simple from Corpus"
+        sql = "select sample from Corpus"
         if unused_only:
             
             
-            sql = "select simple from Corpus WHERE used=0"
+            sql = "select sample from Corpus WHERE used=0"
         
         
         testcases = [e[0] for e in self.query_template(sql)]
@@ -63,14 +63,14 @@ class DBOperation:
             cursor.close()
         return result
 
-    def insert_original_testcase(self, testcase: str, simple: str) -> int:
+    def insert_original_testcase(self, testcase: str, sample: str) -> int:
 
-        sql = "select id from Corpus where simple=?"
+        sql = "select id from Corpus where sample=?"
         
-        simple_id = self.query_template(sql, [simple])[0][0]
-        sql_insert = "insert or ignore into OriginalTestcases(testcase, simple_id) values(?,?)"
+        sample_id = self.query_template(sql, [sample])[0][0]
+        sql_insert = "insert or ignore into OriginalTestcases(testcase, sample_id) values(?,?)"
         
-        original_testcase_id = self.insert_template(sql_insert, [testcase, simple_id])
+        original_testcase_id = self.insert_template(sql_insert, [testcase, sample_id])
         if original_testcase_id is None:  
             query_id_sql = "select id from OriginalTestcases where testcase=?"
             original_testcase_id = self.query_template(query_id_sql, [testcase])[0][0]
@@ -88,13 +88,15 @@ class DBOperation:
         
         max_str_len = int((2 ** 15-1) / 2)  
         try:
-            cursor.execute(insert_testcase_sql, [original_testcase_id, harness_result.testcase])
-            
-            if cursor.rowcount == 0:
-                return [None, None]
-            testcase_id = cursor.lastrowid
+            # cursor.execute(insert_testcase_sql, [original_testcase_id, harness_result.testcase])            
+            # print("im here")
+            # if cursor.rowcount == 0:
+            #     return [None, None]
+            # testcase_id = cursor.lastrowid
+            testcase_id = original_testcase_id
             for output in harness_result.outputs:
                 read_result = self.query_template("SELECT id FROM Engines WHERE testbed=?", [output.testbed])
+                # print("size of read_result:", len(read_result))
                 if len(read_result) == 0:  
                     cursor.execute(insert_engines_sql, [output.testbed])
                     testbed_id = cursor.lastrowid
@@ -111,7 +113,7 @@ class DBOperation:
             
         except BaseException as e:
             
-            file=open("../EmbeddedFuzzer/gj/result.txt","w")
+            file=open("../results/result.txt","w")
             file.write(str(testcase_id))
             file.write("-")
             file.write(str(testbed_id))
@@ -153,10 +155,10 @@ class DBOperation:
         finally:
             cursor.close()
 
-    def insert_corpus(self, simple: str) -> int:
+    def insert_corpus(self, sample: str) -> int:
 
-        sql = f"INSERT OR IGNORE INTO Corpus (simple) VALUES(?)"
-        return self.insert_template(sql, [simple])
+        sql = f"INSERT OR IGNORE INTO Corpus (sample) VALUES(?)"
+        return self.insert_template(sql, [sample])
 
     def insert_template(self, sql: str, values: list) -> int:
 
@@ -196,11 +198,11 @@ class DBOperation:
         finally:
             cursor.close()
 
-    def update_simple_status(self, simple: str):
+    def update_sample_status(self, sample: str):
         cursor = self.conn.cursor()
-        sql = "update Corpus set used=1 WHERE simple=?"
+        sql = "update Corpus set used=1 WHERE sample=?"
         try:
-            cursor.execute(sql, [simple])
+            cursor.execute(sql, [sample])
             self.conn.commit()
         except BaseException as e:
             self.conn.rollback()
@@ -214,10 +216,12 @@ class DBOperation:
             return self.query_template(sql, [test_case_id])
         else:
             if limit > 0:
-                sql = "SELECT id, testcase FROM Testcases WHERE auto_simplified_testcase NOT NULL AND is_manual_check = 0 LIMIT ?;"
+                # sql = "SELECT id, testcase FROM Testcases WHERE auto_simplified_testcase NOT NULL AND is_manual_check = 0 LIMIT ?;"
+                sql = "SELECT id, testcase FROM Testcases WHERE is_manual_check = 0 LIMIT ?;"
                 return self.query_template(sql, [limit])
             else:
-                sql = "SELECT id, testcase FROM Testcases WHERE auto_simplified_testcase NOT NULL AND is_manual_check = 0;"
+                # sql = "SELECT id, testcase FROM Testcases WHERE auto_simplified_testcase NOT NULL AND is_manual_check = 0;"
+                sql = "SELECT id, testcase FROM Testcases WHERE is_manual_check = 0;"
                 return self.query_template(sql)
 
     def query_mutated_test_case_randomly(self):
@@ -228,6 +232,10 @@ class DBOperation:
         sql = """SELECT id, testcase FROM Testcases WHERE auto_simplified_testcase NOT NULL AND is_manual_check = 0 AND Testcases.id in (select distinct(O.testcase_id) from Outputs O INNER JOIN DifferentialTestResults D WHERE O.id=D.output_id AND D.bug_type="Performance issue") order by RANDOM() limit 1;"""
        
         sql = """SELECT id, testcase FROM Testcases WHERE is_manual_check = 0 AND Testcases.id in (select distinct(O.testcase_id) from Outputs O INNER JOIN DifferentialTestResults D WHERE O.id=D.output_id AND D.bug_type="Performance issue") limit 1;"""
+        return self.query_template(sql)
+    
+    def query_harness_result(self):
+        sql = "SELECT * FROM DifferentialTestResults"
         return self.query_template(sql)
 
     def update_test_case_manual_checked_state(self, test_case_id: int):
@@ -274,10 +282,10 @@ class DBOperation:
             original_testcase_id = self.query_template(query_id_sql, [testcase])[0][0]
         return original_testcase_id
 
-    def insert_corpus1(self, simple: str) -> int:
+    def insert_corpus1(self, sample: str) -> int:
 
-        sql = "INSERT OR IGNORE INTO Corpus(simple) VALUES(?)"
-        return self.insert_template(sql, [simple])
+        sql = "INSERT OR IGNORE INTO Corpus(sample) VALUES(?)"
+        return self.insert_template(sql, [sample])
 
     def query_testcases_id(self, testcase: str) -> int:
         sql = "select id from OriginalTestcases where testcase=?"
@@ -286,7 +294,7 @@ class DBOperation:
 
    
     def query_flag(self, id: int) -> int:
-        sql="SELECT corpus.flag FROM corpus JOIN OriginalTestcases ON corpus.id = OriginalTestcases.simple_id WHERE OriginalTestcases.id = ?"
+        sql="SELECT corpus.flag FROM corpus JOIN OriginalTestcases ON corpus.id = OriginalTestcases.sample_id WHERE OriginalTestcases.id = ?"
         flag = self.query_template(sql, [id])[0][0]
         return flag
 

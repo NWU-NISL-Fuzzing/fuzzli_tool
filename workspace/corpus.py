@@ -8,7 +8,7 @@ def getCorpus():
         os.makedirs(output_folder)
     conn = sqlite3.connect('/home/workspace/top2000corpus-20230106-FX-SF.db')
     cursor = conn.cursor()
-    cursor.execute("select simple from Corpus")
+    cursor.execute("select sample from Corpus")
     rows = cursor.fetchall()
     for idx, row in enumerate(rows):
         file_path = os.path.join(output_folder, f'data_{idx}.js')
@@ -27,7 +27,7 @@ def saveCorpus():
             file_content = file.read()
 
         cursor.execute(f'''
-            INSERT INTO Corpus (simple)
+            INSERT INTO Corpus (sample)
             VALUES (?)
         ''', (file_content,))
     conn.commit()

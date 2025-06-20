@@ -30,12 +30,12 @@ class Fuzzer:
             self.config.close_resources()
 
     def run(self):
-        for simple in tqdm(self.config.simples):
-            original_test_case = self.config.callable_processor.get_self_calling(simple)
+        for sample in tqdm(self.config.samples):
+            original_test_case = self.config.callable_processor.get_self_calling(sample)
             original_test_case_id = self.config.database.insert_original_testcase(testcase=original_test_case,
-                                                                                  simple=simple)
+                                                                                  sample=sample)
             
-            self.config.database.update_simple_status(simple)  
+            self.config.database.update_sample_status(sample)  
             mutated_test_case_list = self.config.mutator.mutate(original_test_case, max_size=20)
             mutated_test_case_list.append(original_test_case)
             while len(mutated_test_case_list) > 0:
@@ -72,9 +72,9 @@ class Fuzzer:
                     
                     delete_mutation_test_case_list = [e.testcase for e in self.config.reducer.mutated_harness_result_list]
                     mutated_test_case_list.extend(delete_mutation_test_case_list)
-                    simple_duration_ms = labdate.Datetime2Ms(simplify_end_time - simplify_start_time)
+                    sample_duration_ms = labdate.Datetime2Ms(simplify_end_time - simplify_start_time)
                     self.config.database.insert_auto_simplified_testcase(test_case_id, simplified_test_case,
-                                                                         simple_duration_ms)
+                                                                         sample_duration_ms)
                     
                     self.save_suspicious_result(simplified_test_case, differential_test_result, mutated_test_case,
                                                 original_test_case, harness_result)

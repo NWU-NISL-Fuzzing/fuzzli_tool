@@ -1,19 +1,19 @@
 CREATE TABLE IF NOT EXISTS Corpus(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    simple BLOB NOT NULL,
+    sample BLOB NOT NULL,
     used INTEGER default 0,
 
-    UNIQUE(simple)
+    UNIQUE(sample)
     );
 
-CREATE UNIQUE INDEX IF NOT EXISTS Corpus_simple_index on Corpus(simple);
+CREATE UNIQUE INDEX IF NOT EXISTS Corpus_sample_index on Corpus(sample);
 
 CREATE TABLE IF NOT  EXISTS OriginalTestcases(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     testcase BLOB NOT NULL,
-    simple_id INTEGER,
+    sample_id INTEGER,
 
-    FOREIGN KEY (simple_id) REFERENCES Corpus(id),
+    FOREIGN KEY (sample_id) REFERENCES Corpus(id),
     UNIQUE(testcase)
     );
 

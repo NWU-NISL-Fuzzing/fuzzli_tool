@@ -1,17 +1,23 @@
+import random
 import logging
-import sys
-
+import argparse
 from tqdm import tqdm
 from typing import List
+from termcolor import cprint
+
+import sys
 sys.path.extend(['../EmbeddedFuzzer', '../EmbeddedFuzzer/src'])
+
+from utils import crypto
 from Configer import Config
 import Result
-from utils import crypto
-
-import random
 
 logging.basicConfig(level=logging.INFO,
                     format='%(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
+parser = argparse.ArgumentParser()
+parser.add_argument('--step', type=int, default=1, help='step0.run all steps\nstep1.mutate\nstep2.differential testing\n3.reduce')
+parser.add_argument('--size', type=int, default=10, help='the number of test cases')
+args = parser.parse_args()
 
 LOOP_MUTATOR = True
 ARRAY_MUTATOR = True
@@ -27,58 +33,116 @@ class Fuzzer:
 
     def main(self):
         try:
-            self.run()
+            step = args.step
+            size = args.size
+            if step == 0:
+                self.step0(size)
+            elif step == 1:
+                self.step1(size)
+            elif step == 2:
+                self.step2(size)
+            elif step == 3:
+                self.step3(size)
+            cprint("Fuzzing finished.", "blue")
         except BaseException as e:
             raise e
         finally:
             self.config.close_resources()
 
-    def run(self):
-        
+    def step0(self, size: int):
         for simple in tqdm(self.config.simples, ncols=100):
+            # Step1. Obtain seed program and mutate.
             original_test_case = self.config.callable_processor.get_self_calling(simple)
-
-            print("")
-            original_test_case_id = self.config.database.insert_original_testcase(testcase=original_test_case,
-                                                                                  simple=simple)
+            original_test_case_id = self.config.database.insert_original_testcase(testcase=original_test_case, simple=simple)
+            self.config.database.commit()
             if self.premutation(original_test_case):
                 self.config.database.update_simple_status(simple)
                 continue
-
             flag = self.config.database.query_flag(original_test_case_id)
             print(original_test_case_id)
             flag = int(flag, 2)
             mutated_test_case_list=self.mutationByFlag(flag, original_test_case)
-
+            # Step2. Differential testing.
             for mutated_test_case in mutated_test_case_list:
                 harness_result = self.config.harness.run_testcase(mutated_test_case)
-                
                 [harness_result, test_case_id] = self.config.database.insert_harness_result(harness_result,
                                                                                             original_test_case_id)
                 differential_test_result = Result.differential_test(harness_result)
                 if len(differential_test_result) == 0:
                     continue
-                simplified_test_case = self.config.reducer.reduce(harness_result)
-                
+                # Step3. Reduce.
+                simplified_test_case = self.config.reducer.reduce(harness_result)                
                 uniformed_test_case = self.uniform(simplified_test_case)
                 new_harness_result = self.config.harness.run_testcase(uniformed_test_case)
-                
-                '''
-                suspicious_differential_test_result_list = self.config.classifier.filter(
-                    Result.differential_test(new_harness_result), new_harness_result)
-                self.config.database.insert_differential_test_results(suspicious_differential_test_result_list)
-                if len(suspicious_differential_test_result_list) == 0:  
-                    continue
-                '''
-                
                 new_differential_test_result = Result.differential_test(new_harness_result)
                 if len(new_differential_test_result) == 0:
                     continue
-                self.config.database.insert_differential_test_results(new_differential_test_result, mutated_test_case)
-                
+                self.config.database.insert_differential_test_results(new_differential_test_result, mutated_test_case)                
                 self.save_interesting_test_case(uniformed_test_case)
             self.config.database.update_simple_status(simple)  
 
+    def step1(self, size: int):
+        """ Step1. Obtain seed programs and mutate. """
+
+        cprint("Step1. Obtain seed programs and mutate.", "blue")
+        if size > len(self.config.samples):
+            size = len(self.config.samples)
+            cprint("The specific size is larger than the number of samples, so we use the number of samples instead.", "yellow")
+        for i in range(size):
+            sample = self.config.samples[i]
+            original_test_case = self.config.callable_processor.get_self_calling(sample)
+            print("original_test_case:\n"+original_test_case)
+            original_test_case_id = self.config.database.insert_original_testcase(testcase=original_test_case, sample=sample)
+            if self.premutation(original_test_case):
+                self.config.database.update_sample_status(sample)
+                continue
+            flag = self.config.database.query_flag(original_test_case_id)
+            print(original_test_case_id)
+            flag = int(flag, 2)
+            mutated_test_case_list = self.mutationByFlag(flag, original_test_case)
+   
+    def step2(self, size: int):
+        """ Step2. Differential testing. """
+
+        # If differential testing is executed separately, we need to obtain the test cases.
+        mutated_test_case_list = self.config.database.query_mutated_test_case()
+        # Notice that, `mutated_test_case_list` is a tuple list.
+        # print(len(mutated_test_case_list))
+        cprint("Step2. Differential testing.", "blue")
+        if size > len(mutated_test_case_list):
+            size = len(mutated_test_case_list)
+            cprint("The specific size is larger than the number of samples, so we use the number of samples instead.", "yellow")
+        for i in range(size):
+            idx, mutated_test_case = mutated_test_case_list[i]
+            harness_result = self.config.harness.run_testcase(mutated_test_case)
+            print("harness_result:\n")
+            print(harness_result)
+            [harness_result, test_case_id] = self.config.database.insert_harness_result(harness_result, idx)
+            differential_test_result = Result.differential_test(harness_result)
+            if len(differential_test_result) == 0:
+                continue
+            # TODO. 原本的逻辑是精简后才保存
+            self.config.database.insert_differential_test_results(differential_test_result, mutated_test_case)
+
+    def step3(self, size: int):
+        """ Step3. Reduce. """
+
+        cprint("Step3. Reduce.", "blue")
+        harness_result_list = self.config.database.query_harness_result()
+        if size > len(harness_result_list):
+            size = len(harness_result_list)
+            cprint("The specific size is larger than the number of samples, so we use the number of samples instead.", "yellow")
+        for i in range(size):
+            harness_result = harness_result_list[i]
+            simplified_test_case = self.config.reducer.reduce(harness_result)
+            uniformed_test_case = self.uniform(simplified_test_case)
+            new_harness_result = self.config.harness.run_testcase(uniformed_test_case)
+            new_differential_test_result = Result.differential_test(new_harness_result)
+            if len(new_differential_test_result) == 0:
+                continue
+            self.config.database.insert_differential_test_results(new_differential_test_result, mutated_test_case)
+            self.save_interesting_test_case(uniformed_test_case)
+        self.config.database.update_sample_status(sample)
     
     def premutation(self, original_test_case: str) -> bool:
         harness_result = self.config.harness.run_testcase(original_test_case)
@@ -91,7 +155,6 @@ class Fuzzer:
                 return False
         return True
 
-    
     def mutation(self, original_test_case: str) -> List[str]:
         mutated_test_case_list = []
         
@@ -116,7 +179,6 @@ class Fuzzer:
         mutated_test_case_list.append(original_test_case)
         return mutated_test_case_list
 
-    
     def mutationByFlag(self, flag: int, original_test_case: str) -> List[str]:
         
         mutated_test_case_list = []
@@ -159,7 +221,6 @@ class Fuzzer:
         file_path.parent.mkdir(parents=True, exist_ok=True) 
         logging.info(f"\nInteresting test case is writen to the file:\n {file_path}")
         file_path.write_text(test_case) 
-
    
     def getTime(self, originalTestcase:str) -> int:
         harness_result = self.config.harness.run_testcase(originalTestcase)
@@ -169,10 +230,8 @@ class Fuzzer:
         return differ
 
 
-
 if __name__ == '__main__':
     try:
-       
         Fuzzer().main()
     except RuntimeError:
         sys.exit(1)

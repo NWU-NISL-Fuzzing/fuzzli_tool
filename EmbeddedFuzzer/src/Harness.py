@@ -37,14 +37,13 @@ class Harness:
         result = Result.HarnessResult(testcase=testcase)
         with tempfile.NamedTemporaryFile(prefix="javascriptTestcase_", suffix=".js", delete=True) as f:
             testcase_path = pathlib.Path(f.name)
-            try:
-                
+            print(f"Write testcase into file {testcase_path}...")
+            try:                
                 testcase_path.write_bytes(bytes(testcase, encoding="utf-8"))
             except Exception as e:
                 logging.exception("\nWrite to file failure: ", e)
                 return result
-            if self.mode == Mode.SINGLE_THREAD.value:
-                
+            if self.mode == Mode.SINGLE_THREAD.value:                
                 result.outputs = self.single_thread(testcase_path)
             elif self.mode == Mode.MULTI_THREADS.value:
                 result.outputs = self.multi_thread(testcase_path)

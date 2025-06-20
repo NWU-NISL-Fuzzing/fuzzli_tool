@@ -42,26 +42,26 @@ class Config:
         self.error_info.mkdir(parents=True, exist_ok=True)
         db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        self.simples = None
+        self.samples = None
         self.callable_processor = None
         
 
     def init_data(self):
-        logging.info("Loading simples...")
+        logging.info("Loading samples in the corpus...")
         
-        self.simples = self.database.query_corpus()
+        self.samples = self.database.query_corpus()
         
-        self.callable_processor = CallableProcessor(self.simples)
+        self.callable_processor = CallableProcessor(self.samples)
 
     def config_check(self):
         if not pathlib.Path(self.config_path).exists():
             raise FileNotFoundError(f"Config file not exist: {self.config_path}")
         with open(self.config_path, "r") as f:
             config = json.load(f)
-        simple_db = pathlib.Path(config["db_path"]).absolute().resolve()
-        if not simple_db.is_file() or not simple_db.exists():
-            conn = sqlite3.connect(simple_db)
-            # raise FileNotFoundError(f"Corpus db file not exist: {simple_db}")
+        sample_db = pathlib.Path(config["db_path"]).absolute().resolve()
+        if not sample_db.is_file() or not sample_db.exists():
+            conn = sqlite3.connect(sample_db)
+            # raise FileNotFoundError(f"Corpus db file not exist: {sample_db}")
         
         classify_db = pathlib.Path(config["classify_db"])
         

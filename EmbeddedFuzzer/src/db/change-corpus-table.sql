@@ -1,8 +1,8 @@
 
 ALTER TABLE corpus RENAME TO tableOld;
-CREATE TABLE IF NOT EXISTS Corpus(id INTEGER PRIMARY KEY AUTOINCREMENT,simple BLOB NOT NULL,used INTEGER default 0,UNIQUE(simple));
-CREATE UNIQUE INDEX IF NOT EXISTS Corpus_simple_index on Corpus(simple);
-INSERT Or IGNORE INTO Corpus(simple) SELECT Content as simple FROM tableOld;
+CREATE TABLE IF NOT EXISTS Corpus(id INTEGER PRIMARY KEY AUTOINCREMENT,sample BLOB NOT NULL,used INTEGER default 0,UNIQUE(sample));
+CREATE UNIQUE INDEX IF NOT EXISTS Corpus_sample_index on Corpus(sample);
+INSERT Or IGNORE INTO Corpus(sample) SELECT Content as sample FROM tableOld;
 SELECT COUNT(*) FROM Corpus;
 SELECT COUNT(*) FROM  tableOld;
 drop table tableOld;

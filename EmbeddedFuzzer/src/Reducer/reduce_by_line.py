@@ -2,7 +2,7 @@ import Result
 from Reducer import simplifyTestcaseCore
 
 
-def simple_by_statement(init_result: Result.HarnessResult):
+def sample_by_statement(init_result: Result.HarnessResult):
 
     new_bug_harness_result_list = []
     original_test_case = init_result.testcase.strip()
