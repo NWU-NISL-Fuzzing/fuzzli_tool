@@ -115,10 +115,13 @@ class Fuzzer:
         for i in range(size):
             idx, mutated_test_case = mutated_test_case_list[i]
             harness_result = self.config.harness.run_testcase(mutated_test_case)
-            print("harness_result:\n")
+            print("harness_result:")
             print(harness_result)
             [harness_result, test_case_id] = self.config.database.insert_harness_result(harness_result, idx)
             differential_test_result = Result.differential_test(harness_result)
+            print("differential_test_result:")
+            for r in differential_test_result:
+                print(r)
             if len(differential_test_result) == 0:
                 continue
             # TODO. 原本的逻辑是精简后才保存

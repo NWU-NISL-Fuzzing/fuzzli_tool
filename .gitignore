@@ -4,3 +4,5 @@ engines
 engines.zip
 EmbeddedFuzzer/node_modules
 workspace/*.db
+workspace/*.txt
+**/*1.py

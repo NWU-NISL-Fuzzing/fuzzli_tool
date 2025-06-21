@@ -61,7 +61,7 @@ class Fuzzer:
 
                 
                 for per in differential_test_result:
-                    if per.bug_type == "Performance issue":
+                    if per.bug_type == "Excessive time difference" or per.bug_type == "Timeout":
                         need_simplify = False
                         break
 

@@ -29,11 +29,8 @@ class Output:
             return "timeout"
         elif self.returncode < 0:
             return "crash"
-        
-        
         elif self.returncode > 0 or not self.stderr == "":
-            return "script_error"
-        
+            return "script_error"        
         else:
             return "pass"
 
@@ -58,8 +55,6 @@ class Output:
 
 
 class HarnessResult:
-
-
     def __init__(self, testcase: str):
         self.testcase = testcase
         self.outputs = []
@@ -72,7 +67,6 @@ class HarnessResult:
                                               "outputs": [e.serialize() for e in self.outputs]
                                               }
                            }, indent=4)
-
 
 
 class DifferentialTestResult:
@@ -116,7 +110,6 @@ def get_majority_output(result: HarnessResult) -> Majority:
 
 
 def get_min_duration(result: HarnessResult) -> int:
-
     min_duration = int(1e10)
     for output in result.outputs:
         if output.output_class == "pass":
@@ -124,41 +117,31 @@ def get_min_duration(result: HarnessResult) -> int:
     return min_duration
 
 
-
 def differential_test(result: HarnessResult) -> List[DifferentialTestResult]:
     if result is None:  
         return []
     performance_factor = 10  
-    
     ratio = 2 / 3
-    
     majority = get_majority_output(result)
     testbed_num = len(result.outputs)
     bugs_info = []
     for output in result.outputs:
-        
         if output.output_class == "crash":
-            bugs_info.append(DifferentialTestResult("crash", output.id, output.testbed))
-            pass
-        
+            bugs_info.append(DifferentialTestResult("Crash", output.id, output.testbed))
         elif majority.majority_outcome != output.output_class and majority.outcome_majority_size >= math.ceil(
                 ratio * testbed_num):
             if majority.majority_outcome == "pass":
-                
                 bugs_info.append(DifferentialTestResult("Most pass *** run error", output.id, output.testbed))
-            
-            elif majority.majority_outcome == "timeout":
-                
-                pass
-            elif majority.majority_outcome == "crash":
+            elif majority.majority_outcome == "timeout" and majority.outcome_majority_size != testbed_num:
+                bugs_info.append(DifferentialTestResult("Timeout", output.id, output.testbed))
+                # pass
+            elif majority.majority_outcome == "Crash":
                 bugs_info.append(DifferentialTestResult("Most crash *** run error", output.id, output.testbed))
             elif majority.majority_outcome == "script_error":
                 bugs_info.append(DifferentialTestResult("Most script error *** run error", output.id, output.testbed))
-        
         elif output.output_class == "pass" and majority.majority_outcome == output.output_class and \
                 output.stdout != majority.majority_stdout and \
                 majority.stdout_majority_size >= math.ceil(ratio * majority.outcome_majority_size):
-            
             if majority.outcome_majority_size >= math.ceil(ratio * testbed_num):
                 bugs_info.append(DifferentialTestResult("Pass value *** run error", output.id, output.testbed))
     bugs_info = performance_test(result, bugs_info, performance_factor)
@@ -167,20 +150,13 @@ def differential_test(result: HarnessResult) -> List[DifferentialTestResult]:
 
 def performance_test(result: HarnessResult, bugs_info: List[DifferentialTestResult], performance_factor) \
         -> List[DifferentialTestResult]:
-
-    
-    
-    
     abnormal_output_id_set = {info.output_id for info in bugs_info}
-    
     non_abnormal_outputs = [output for output in result.outputs if not abnormal_output_id_set.__contains__(output.id)]
-    
-    
     if len(non_abnormal_outputs) < 1:
         return bugs_info
-    
     min_duration = min([output.duration_ms for output in non_abnormal_outputs])
     for output in non_abnormal_outputs:
-        if output.output_class == "pass" and output.duration_ms > min_duration * performance_factor:
-            bugs_info.append(DifferentialTestResult("Performance issue", output.id, output.testbed))
+        # if output.output_class == "pass" and output.duration_ms > min_duration * performance_factor:
+        if output.duration_ms > min_duration * performance_factor:
+            bugs_info.append(DifferentialTestResult("Excessive time difference", output.id, output.testbed))
     return bugs_info
