@@ -193,9 +193,16 @@ class DBOperation:
         sql = """SELECT id, testcase FROM Testcases WHERE is_manual_check = 0 AND Testcases.id in (select distinct(O.testcase_id) from Outputs O INNER JOIN DifferentialTestResults D WHERE O.id=D.output_id AND D.bug_type="Performance issue") limit 1;"""
         return self.query_template(sql)
     
-    def query_harness_result(self):
+    def query_anomalies(self):
         sql = "SELECT * FROM DifferentialTestResults"
         return self.query_template(sql)
+    
+    def query_results_by_output_id(self, output_id: int):
+        sql1 = "SELECT testcase_id FROM Outputs WHERE id=?"
+        res1 = self.query_template(sql1, [output_id])
+        sql2 = "SELECT * FROM Outputs WHERE testcase_id=?"
+        res2 = self.query_template(sql2, [res1[0][0]])
+        return res2
 
     def update_test_case_manual_checked_state(self, test_case_id: int):
         cursor = self.conn.cursor()
@@ -256,3 +263,6 @@ class DBOperation:
             return result[0][0]
         else:
             return -1 
+    
+    def commit(self):
+        self.conn.commit()

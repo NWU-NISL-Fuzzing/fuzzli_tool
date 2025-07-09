@@ -1,0 +1,6 @@
+mujs_output=$( /home/engines/mujs/mujs-1.3.2/build/release/mujs "${test_file}" 2>&1 )
+hermes_output=$( /home/engines/hermes/hermes-0.12.0/build_release/bin/hermes -w "${test_file}" 2>&1 )
+quickjs_output=$( /home/engines/quickjs/quickjs-2021-03-27/qjs "${test_file}" 2>&1 )
+jerryscript_output=$( /home/engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry "${test_file}" 2>&1 )
+xs_output=$( /home/engines/XS/moddable-4.2.1/build/bin/lin/release/xst "${test_file}" 2>&1 )
+duktape_output=$( /home/engines/duktape/duktape-2.7.0/duk "${test_file}" 2>&1 )
