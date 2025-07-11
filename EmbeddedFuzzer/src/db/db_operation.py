@@ -67,12 +67,10 @@ class DBOperation:
                                     f"VALUES(?,?,?,?,?,?,?)"
         max_str_len = int((2 ** 15-1) / 2)  
         try:
-            # cursor.execute(insert_testcase_sql, [original_testcase_id, harness_result.testcase])            
-            # print("im here")
-            # if cursor.rowcount == 0:
-            #     return [None, None]
-            # testcase_id = cursor.lastrowid
-            testcase_id = original_testcase_id
+            cursor.execute(insert_testcase_sql, [original_testcase_id, harness_result.testcase])            
+            if cursor.rowcount == 0:
+                return [None, None]
+            testcase_id = cursor.lastrowid
             for output in harness_result.outputs:
                 read_result = self.query_template("SELECT id FROM Engines WHERE testbed=?", [output.testbed])
                 # print("size of read_result:", len(read_result))
