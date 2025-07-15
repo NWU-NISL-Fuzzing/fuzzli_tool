@@ -16,18 +16,21 @@ const deleteIndices = args[1].split(',').map(i => parseInt(i, 10)).filter(i => !
 
 console.log('/* deleteIndices:', deleteIndices, '*/');
 
-function getStatementDepth(path) {
-    let depth = 0;
-    let parent = path.parentPath;
+function isLeafStatement(path) {
+    if (!path.isStatement()) return false;
+    if (path.isReturnStatement()) return false;
 
-    while (parent) {
-        if (parent.isBlockStatement()) {
-            depth++;
+    let hasStatementChild = false;
+    path.traverse({
+        Statement(childPath) {
+            if (childPath !== path) {
+                hasStatementChild = true;
+                childPath.stop(); // early exit
+            }
         }
-        parent = parent.parentPath;
-    }
+    });
 
-    return depth;
+    return !hasStatementChild;
 }
 
 function processInput(filename, deleteIndices) {
@@ -40,24 +43,11 @@ function processInput(filename, deleteIndices) {
     let targetNodes = [];
     let index = 0;
 
-    function collectNodes(path, depth) {
-        if (depth === 1 || depth === 2) {
-            targetNodes.push({ path, index });
-            index++;
-        }
-    }
-
     traverse(ast, {
         enter(path) {
-            if (
-                path.isExpressionStatement() ||
-                path.isVariableDeclaration() ||
-                path.isIfStatement() ||
-                path.isForStatement() ||
-                path.isWhileStatement()
-            ) {
-                const depth = getStatementDepth(path);
-                collectNodes(path, depth);
+            if (isLeafStatement(path)) {
+                targetNodes.push({ path, index });
+                index++;
             }
         }
     });

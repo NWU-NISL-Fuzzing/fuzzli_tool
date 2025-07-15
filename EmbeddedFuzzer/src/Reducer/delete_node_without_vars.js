@@ -18,18 +18,21 @@ const protectedVars = new Set(args[2].split(',').map(s => s.trim()).filter(Boole
 console.log('/* deleteIndices:', deleteIndices, '*/');
 console.log('/* protectedVars:', protectedVars, '*/');
 
-function getStatementDepth(path) {
-    let depth = 0;
-    let parent = path.parentPath;
+function isLeafStatement(path) {
+    if (!path.isStatement()) return false;
+    if (path.isReturnStatement()) return false;
 
-    while (parent) {
-        if (parent.isBlockStatement()) {
-            depth++;
+    let hasStatementChild = false;
+    path.traverse({
+        Statement(childPath) {
+            if (childPath !== path) {
+                hasStatementChild = true;
+                childPath.stop();
+            }
         }
-        parent = parent.parentPath;
-    }
+    });
 
-    return depth;
+    return !hasStatementChild;
 }
 
 function containsProtectedVars(node) {
@@ -55,24 +58,11 @@ function processInput(filename, deleteIndices) {
     let targetNodes = [];
     let index = 0;
 
-    function collectNodes(path, depth) {
-        if (depth === 1 || depth === 2) {
-            targetNodes.push({ path, index });
-            index++;
-        }
-    }
-
     traverse(ast, {
         enter(path) {
-            if (
-                path.isExpressionStatement() ||
-                path.isVariableDeclaration() ||
-                path.isIfStatement() ||
-                path.isForStatement() ||
-                path.isWhileStatement()
-            ) {
-                const depth = getStatementDepth(path);
-                collectNodes(path, depth);
+            if (isLeafStatement(path)) {
+                targetNodes.push({ path, index });
+                index++;
             }
         }
     });
@@ -91,19 +81,22 @@ function processInput(filename, deleteIndices) {
             };
 
             const result = containsProtectedVars(tmp_ast);
-            // console.log(result);
             if (result) {
                 console.log(`// 跳过删除索引 ${index}：包含受保护变量`);
                 continue;
             }
-            if (path.listKey && Array.isArray(path.parent[path.listKey])) {
-                console.log("// remove");
-                path.remove();
-            } else if (t.isStatement(path.node)) {
-                console.log("// remove");
-                path.remove();
-            } else {
-                console.log(`// 索引 ${index} 对应的节点不支持删除`);
+            try {
+                if (path.listKey && Array.isArray(path.parent[path.listKey])) {
+                    console.log(`// 删除索引 ${index}`);
+                    path.remove();
+                } else if (t.isStatement(path.node)) {
+                    console.log(`// 删除索引 ${index}`);
+                    path.remove();
+                } else {
+                    console.log(`// 索引 ${index} 对应的节点不支持删除`);
+                }                
+            } catch (error) {
+                console.error(`// 删除索引 ${index} 时发生错误：`, error);
             }
         }
     }

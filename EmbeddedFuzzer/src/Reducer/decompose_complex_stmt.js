@@ -1,50 +1,61 @@
+// decompose_complex_stmt.js
 module.exports = function ({ types: t }) {
+  let tempVarCounter = 0;
+
+  function getTempVar() {
+    return t.identifier("tmp" + tempVarCounter++);
+  }
+
   return {
     visitor: {
+      Program: {
+        enter(path) {
+          tempVarCounter = 0;
+        }
+      },
+
+      ReturnStatement(path) {
+        const arg = path.node.argument;
+        if (arg && !t.isIdentifier(arg) && !t.isLiteral(arg)) {
+          const tmp = getTempVar();
+          const decl = t.variableDeclaration("var", [
+            t.variableDeclarator(tmp, arg),
+          ]);
+          path.insertBefore(decl);
+          path.node.argument = tmp;
+        }
+      },
+
       ExpressionStatement(path) {
-        console.log("ExpressionStatement");
         const expr = path.node.expression;
-        if (
-          (t.isCallExpression(expr) || t.isAssignmentExpression(expr)) &&
-          !t.isIdentifier(expr)
-        ) {
-          const extracted = extractSubexpressions(t, expr);
-          if (extracted) {
-            path.replaceWithMultiple(extracted);
+
+        // func1(a + b)
+        if (t.isCallExpression(expr)) {
+          expr.arguments.forEach((arg, i) => {
+            if (!t.isIdentifier(arg) && !t.isLiteral(arg)) {
+              const tmp = getTempVar();
+              const decl = t.variableDeclaration("var", [
+                t.variableDeclarator(tmp, arg),
+              ]);
+              path.insertBefore(decl);
+              expr.arguments[i] = tmp;
+            }
+          });
+        }
+
+        // x = y = 5 + 6;
+        if (t.isAssignmentExpression(expr)) {
+          const rhs = expr.right;
+          if (!t.isIdentifier(rhs) && !t.isLiteral(rhs)) {
+            const tmp = getTempVar();
+            const decl = t.variableDeclaration("var", [
+              t.variableDeclarator(tmp, rhs),
+            ]);
+            path.insertBefore(decl);
+            expr.right = tmp;
           }
         }
       },
-      ReturnStatement(path) {
-        console.log("ReturnStatement");
-        if (path.node.argument && !t.isIdentifier(path.node.argument)) {
-          const tmp = path.scope.generateUidIdentifier("tmp");
-          const decl = t.variableDeclaration("var", [
-            t.variableDeclarator(tmp, path.node.argument),
-          ]);
-          const ret = t.returnStatement(tmp);
-          path.replaceWithMultiple([decl, ret]);
-        }
-      },
-      IfStatement(path) {
-        console.log("IfStatement");
-        const test = path.node.test;
-        if (!t.isIdentifier(test) && !t.isLiteral(test)) {
-          const tmp = path.scope.generateUidIdentifier("tmp");
-          const tmpDecl = t.variableDeclaration("var", [
-            t.variableDeclarator(tmp, test),
-          ]);
-          path.node.test = tmp;
-          path.insertBefore(tmpDecl);
-        }
-      }
     },
   };
 };
-
-function extractSubexpressions(t, expr) {
-  const tmp = t.identifier("_tmp1");
-  const decl = t.variableDeclaration("var", [
-    t.variableDeclarator(tmp, expr),
-  ]);
-  return [decl];
-}
