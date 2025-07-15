@@ -8,11 +8,11 @@ import re
 
 """ Gloabl Variable Definitions """
 
-bug_type = "timeout"
-# bug_type = "etd"
+# bug_type = "timeout"
+bug_type = "etd"
 NODE_PATH = "/home/fuzzli_tool/EmbeddedFuzzer/node_modules"
 INSTRUMENT_JS_PATH = "/home/fuzzli_tool/EmbeddedFuzzer/src/Reducer/instrument.js"
-TESTCASE_PATH = f"/home/fuzzli_tool/workspace/reduction-{bug_type}-20250701"
+TESTCASE_PATH = f"/home/fuzzli_tool/workspace/reduction-{bug_type}-20250712"
 if not os.path.exists(TESTCASE_PATH):
     os.makedirs(TESTCASE_PATH)
     print("Create TESTCASE_PATH.")
@@ -39,7 +39,7 @@ def transform_js_code(original: str) -> str:
 
     result = subprocess.run([
         "npx", "babel", original,
-        "--plugins", "./decompose_complex_stmt.js"
+        "--plugins", "/home/fuzzli_tool/EmbeddedFuzzer/src/Reducer/decompose_complex_stmt.js"
     ], capture_output=True, text=True)
     if result.returncode != 0:
         print("Babel transform failed:")
@@ -73,6 +73,7 @@ def instrument_code(js_code):
 def get_variables_on_line(filename: str, target_line: list):
     """ Get the variable names on the target line. """
 
+    print("target_line:", target_line)
     try:
         result = subprocess.run(
             ['node', 'analyze_vars.js', filename, int_list_to_str(target_line)],
@@ -176,8 +177,10 @@ def delete_node_without_vars(filename: str, to_be_deleted: str, var_list: str):
     if type(to_be_deleted) != str:
         raise TypeError("to_be_deleted should be a string")
     try:
+        cmd = ['node', 'delete_node_without_vars.js', filename, to_be_deleted, var_list]
+        print("cmd:"+" ".join(cmd))
         result = subprocess.run(
-            ['node', 'delete_node_without_vars.js', filename, to_be_deleted, var_list],
+            cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True,
@@ -200,14 +203,21 @@ def delete_useless_stmt(filename, sorted_d1_time_dict, inst_num):
             to_be_deleted = sorted_d1_time_dict.keys()
             to_be_deleted = list(to_be_deleted)
             to_be_kept = set(range(inst_num)) - set(to_be_deleted)
-            # TODO.如果情况是卡住的语句没有统计上时间，那么其依赖的语句不能删除
-            # deleted = delete_node(filename, int_list_to_str(to_be_deleted))
         # Situation 3. Statements that successfully execute spend more than 0s.
         elif list(sorted_d1_time_dict.values()).count(0.0) != len(sorted_d1_time_dict):
+            # 如果有语句的运行时间未统计上，补全再进行分类
+            if len(sorted_d1_time_dict) != inst_num:
+                for i in range(inst_num):
+                    if i not in sorted_d1_time_dict:
+                        sorted_d1_time_dict[i] = 30.0
             to_be_deleted, to_be_kept = classify_exec_time(sorted_d1_time_dict)
         else:
             raise Exception("unexpected situations!")
+        print("to_be_kept:", to_be_kept)
         # The statements after longest lines can be deleted directly
+        if len(to_be_kept) == 0 and len(to_be_deleted) == inst_num:
+            to_be_kept = to_be_deleted
+            to_be_deleted = []
         max_longest_line = max(to_be_kept)
         to_be_deleted_before, to_be_deleted_after = [], []
         for i in to_be_deleted:
@@ -216,13 +226,13 @@ def delete_useless_stmt(filename, sorted_d1_time_dict, inst_num):
             else:
                 to_be_deleted_before.append(i)
         if len(to_be_deleted_after) > 0:
-            # print("存在可以直接删除的行：", to_be_deleted_after)
+            print("存在可以直接删除的行：", to_be_deleted_after)
             deleted = delete_node(filename, int_list_to_str(to_be_deleted_after))
-            # print("deleted:\n"+deleted)
+            print("deleted:\n"+deleted)
             write_down(filename, deleted)
         # Obtain variables used in to_be_kept
         var_list = get_variables_on_line(filename, to_be_kept)
-        # print("var_list:", var_list)
+        print("var_list:", var_list)
         deleted = delete_node_without_vars(filename, int_list_to_str(to_be_deleted_before), ",".join(var_list))
     print("to_be_deleted:", to_be_deleted)
     return deleted
@@ -234,12 +244,31 @@ def remove_dead_code(reduced_path, postprocessed_path):
         subprocess.run([
             "terser", reduced_path,
             "--compress",
-            "dead_code=true,unused=true,conditionals=true,keep_fargs=false",
+            "dead_code=true,unused=true,conditionals=true",
             "--beautify",
             "-o", postprocessed_path
         ], check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
         print("Terser Error:", e.stderr)
+    # 替换_tmp1等变量名
+    with open(postprocessed_path, "r") as f:
+        postprocessed = f.read()
+    for var_name in re.finditer(r"var (tmp[0-9]+)=(.*?);", postprocessed):
+        postprocessed = postprocessed.replace(var_name.group(0), "")
+        postprocessed = postprocessed.replace(var_name.group(1), var_name.group(2))
+    write_down(postprocessed_path, postprocessed)
+    # 删除调用主函数时无用的参数
+    try:
+        result = subprocess.run(
+            ['node', 'remove_unused_args.js', postprocessed_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+            text=True
+        )
+        write_down(postprocessed_path, result.stdout)
+    except subprocess.CalledProcessError as e:
+        print("Error running Node script:", e.stderr)
 
 def main():
     with open(f"/home/fuzzli_tool/workspace/{bug_type}.json", "r") as f:
@@ -247,8 +276,8 @@ def main():
     result = ""
     for i, d in enumerate(data):
         print("processing:", i)
-        # if i != 14:
-        #     continue
+        if i != 12:
+            continue
         testcase_id = d["testcase_id"]
         original_path = TESTCASE_PATH+f"/{i}.js"
         print("original_path:", original_path)
@@ -256,16 +285,17 @@ def main():
         write_down(original_path, testcase)
         # 0. split complex statements into simple statements
         splited = transform_js_code(original_path)
-        write_down(original_path, splited)
+        splited_path = TESTCASE_PATH+f"/{i}_splited.js"
+        write_down(splited_path, splited)
         # 1. instrument testcase
-        instrumented = instrument_code(testcase)
+        instrumented = instrument_code(splited)
         # print(instrumented)
         instrumented_path = TESTCASE_PATH+f"/{i}_instrumented.js"
         write_down(instrumented_path, instrumented)
         # 2. run instrumented testcase
         sorted_d1_time_dict, inst_num = run_js(instrumented_path, d["testbed_id"])
         # 3. delete useless codes
-        reduced = delete_useless_stmt(original_path, sorted_d1_time_dict, inst_num)
+        reduced = delete_useless_stmt(splited_path, sorted_d1_time_dict, inst_num)
         reduced_path = TESTCASE_PATH+f"/{i}_reduced.js"
         write_down(reduced_path, reduced)
         # 4. remove dead code

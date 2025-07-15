@@ -6,4 +6,5 @@ EmbeddedFuzzer/node_modules
 workspace/*.db
 workspace/*.txt
 **/*1.py
-workspace/interesting_testcase
+workspace/interesting_testcase*
+workspace/reduction*
