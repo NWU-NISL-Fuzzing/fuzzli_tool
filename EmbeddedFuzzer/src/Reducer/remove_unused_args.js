@@ -26,7 +26,7 @@ let usedIdentifiers = new Set();
 traverse(ast, {
   VariableDeclarator(path) {
     if (
-      t.isIdentifier(path.node.id, { name: 'NISLa' }) &&
+      t.isIdentifier(path.node.id, { name: 'NISLFuzzingFunc' }) &&
       (t.isFunctionExpression(path.node.init) || t.isArrowFunctionExpression(path.node.init))
     ) {
       targetFunctionId = path.node.id.name;

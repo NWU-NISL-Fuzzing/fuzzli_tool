@@ -3,16 +3,19 @@ import numpy as np
 import subprocess
 import json
 import time
+import math
 import os
 import re
 
 """ Gloabl Variable Definitions """
 
 # bug_type = "timeout"
-bug_type = "etd"
+# bug_type = "etd"
+bug_type = "performance"
 NODE_PATH = "/home/fuzzli_tool/EmbeddedFuzzer/node_modules"
 INSTRUMENT_JS_PATH = "/home/fuzzli_tool/EmbeddedFuzzer/src/Reducer/instrument.js"
-TESTCASE_PATH = f"/home/fuzzli_tool/workspace/reduction-{bug_type}-20250712"
+# TESTCASE_PATH = f"/home/fuzzli_tool/workspace/reduction-{bug_type}-20250717"
+TESTCASE_PATH = f"/home/fuzzli_tool/workspace/fuzzlia-random-100"
 if not os.path.exists(TESTCASE_PATH):
     os.makedirs(TESTCASE_PATH)
     print("Create TESTCASE_PATH.")
@@ -96,7 +99,13 @@ def run_js(filename, testbed_id):
         3: "/home/fuzzli_tool/engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry",
         4: "/home/fuzzli_tool/engines/XS/moddable-3.7.0/build/bin/lin/release/xst",
         5: "/home/fuzzli_tool/engines/duktape/duktape-2.7.0/duk",
-        6: "/home/fuzzli_tool/engines/mujs/mujs-1.3.2/build/release/mujs"
+        6: "/home/fuzzli_tool/engines/mujs/mujs-1.3.2/build/release/mujs",
+        7: "/home/fuzzli_tool/engines/hermes/hermes-0.12.0/build_release/bin/hermes",
+        8: "/home/fuzzli_tool/engines/quickjs/quickjs-2021-03-27/qjs",
+        9: "/home/fuzzli_tool/engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry",
+        10: "/home/fuzzli_tool/engines/XS/moddable-3.7.0/build/bin/lin/release/xst",
+        11: "/home/fuzzli_tool/engines/duktape/duktape-2.7.0/duk",
+        12: "/home/fuzzli_tool/engines/mujs/mujs-1.3.2/build/release/mujs"
     }
     # result = subprocess.run(["timeout", "-s", "TERM", "30", testbed[testbed_id], filename], capture_output=True, text=True)
     cmd = ['stdbuf', '-oL', testbed[testbed_id], filename]
@@ -210,6 +219,9 @@ def delete_useless_stmt(filename, sorted_d1_time_dict, inst_num):
                 for i in range(inst_num):
                     if i not in sorted_d1_time_dict:
                         sorted_d1_time_dict[i] = 30.0
+                for k, v in sorted_d1_time_dict.items():
+                    if math.isnan(v):
+                        sorted_d1_time_dict[k] = 30.0
             to_be_deleted, to_be_kept = classify_exec_time(sorted_d1_time_dict)
         else:
             raise Exception("unexpected situations!")
@@ -240,22 +252,20 @@ def delete_useless_stmt(filename, sorted_d1_time_dict, inst_num):
 def remove_dead_code(reduced_path, postprocessed_path):
     """ Use terser remove dead code. """
 
-    try:
-        subprocess.run([
-            "terser", reduced_path,
-            "--compress",
-            "dead_code=true,unused=true,conditionals=true",
-            "--beautify",
-            "-o", postprocessed_path
-        ], check=True, capture_output=True, text=True)
-    except subprocess.CalledProcessError as e:
-        print("Terser Error:", e.stderr)
     # 替换_tmp1等变量名
-    with open(postprocessed_path, "r") as f:
+    with open(reduced_path, "r") as f:
         postprocessed = f.read()
     for var_name in re.finditer(r"var (tmp[0-9]+)=(.*?);", postprocessed):
         postprocessed = postprocessed.replace(var_name.group(0), "")
         postprocessed = postprocessed.replace(var_name.group(1), var_name.group(2))
+    # 删除变量赋值语句外循环
+    # print("im here")
+    # print(postprocessed)
+    var_dec_in_loop = re.search(r"for \(var INDEX = 0; INDEX < 1000; INDEX\+\+\) \{[\s]+(var NISLParameter[0-9]+ = [\s\S]+?)\n\}", postprocessed)
+    if var_dec_in_loop:
+        # print("存在循环多次定义变量")
+        postprocessed = postprocessed.replace(var_dec_in_loop.group(0), var_dec_in_loop.group(1))
+        # print(postprocessed)
     write_down(postprocessed_path, postprocessed)
     # 删除调用主函数时无用的参数
     try:
@@ -269,15 +279,28 @@ def remove_dead_code(reduced_path, postprocessed_path):
         write_down(postprocessed_path, result.stdout)
     except subprocess.CalledProcessError as e:
         print("Error running Node script:", e.stderr)
+    # 用terser进行压缩
+    try:
+        subprocess.run([
+            "terser", postprocessed_path,
+            "--compress",
+            "dead_code=true,unused=true,conditionals=true,toplevel=true",
+            "--beautify",
+            "-o", postprocessed_path
+        ], check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        print("Terser Error:", e.stderr)
 
 def main():
-    with open(f"/home/fuzzli_tool/workspace/{bug_type}.json", "r") as f:
+    # with open(f"/home/fuzzli_tool/workspace/{bug_type}.json", "r") as f:
+    with open("/home/reduce/fuzzlia_random_100/performance_bugs_fuzzlia.json", "r" ) as f:
         data = json.load(f)
     result = ""
+    print("total:", len(data))
     for i, d in enumerate(data):
         print("processing:", i)
-        if i != 12:
-            continue
+        # if i != 12:
+        #     continue
         testcase_id = d["testcase_id"]
         original_path = TESTCASE_PATH+f"/{i}.js"
         print("original_path:", original_path)
@@ -341,7 +364,14 @@ def run_one():
 
     # sorted_d1_time_dict, inst_num = run_js('/home/fuzzli_tool/workspace/reduction-20250628/1362_instrumented.js', 4)
 
-    print(transform_js_code("test.js"))
+    # print(transform_js_code("test.js"))
+
+    with open("/home/fuzzli_tool/workspace/reduction-performance-20250717-44/0_reduced.js", "r") as f:
+        content = f.read()
+    var_dec_in_loop = re.search(r"for \(var INDEX = 0; INDEX < 1000; INDEX\+\+\) \{[\s]+(var NISLParameter[0-9]+ = [\s\S]+?)\n\}", content)
+    if var_dec_in_loop:
+        content = content.replace(var_dec_in_loop.group(0), var_dec_in_loop.group(1))
+    print(content)
 
 if __name__ == "__main__":
     main()

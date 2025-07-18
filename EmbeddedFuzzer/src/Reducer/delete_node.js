@@ -56,12 +56,16 @@ function processInput(filename, deleteIndices) {
 
     for (const { path, index } of targetNodes) {
         if (toDeleteSet.has(index)) {
-            if (path.listKey && Array.isArray(path.parent[path.listKey])) {
-                path.remove();
-            } else if (t.isStatement(path.node)) {
-                path.remove();
-            } else {
-                console.warn(`索引 ${index} 对应的节点不支持删除`);
+            try{
+                if (path.listKey && Array.isArray(path.parent[path.listKey])) {
+                    path.remove();
+                } else if (t.isStatement(path.node)) {
+                    path.remove();
+                } else {
+                    console.warn(`索引 ${index} 对应的节点不支持删除`);
+                }
+            } catch (e) {
+                console.error(`Error while deleting node at index ${index}:`, e);
             }
         }
     }
