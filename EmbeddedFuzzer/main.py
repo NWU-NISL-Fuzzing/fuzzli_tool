@@ -1,3 +1,4 @@
+import os
 import random
 import logging
 import argparse
@@ -24,6 +25,7 @@ ARRAY_MUTATOR = True
 REGEX_MUTATOR = True
 STRING_MUTATOR = True
 OBJECT_MUTATOR = True
+# OBJECT_MUTATOR = False
 
 class Fuzzer:
     def __init__(self):
@@ -50,6 +52,14 @@ class Fuzzer:
             self.config.close_resources()
 
     def step0(self, size: int):
+        if os.path.exists("/home/fuzzli_tool/workspace/interesting_testcase"):
+            choice = input("interesting_testcase exists, do you want to delete it? (y/n)")
+            if choice == "y":
+                os.system("rm -rf /home/fuzzli_tool/workspace/interesting_testcase")
+            elif choice == "n":
+                pass
+            else:
+                raise Exception("Invalid choice.")
         # for sample in tqdm(self.config.samples, ncols=100):
         if size > len(self.config.samples):
             size = len(self.config.samples)
@@ -82,7 +92,7 @@ class Fuzzer:
                 # if len(new_differential_test_result) == 0:
                 #     continue
                 uniformed_test_case = self.uniform(mutated_test_case)
-                new_differential_test_result = harness_result
+                new_differential_test_result = differential_test_result
                 self.config.database.insert_differential_test_results(new_differential_test_result, mutated_test_case)                
                 self.save_interesting_test_case(uniformed_test_case)
             self.config.database.update_sample_status(sample)  
@@ -130,7 +140,7 @@ class Fuzzer:
                 print(r)
             if len(differential_test_result) == 0:
                 continue
-            # TODO. 原本的逻辑是精简后才保存
+            # TODO. The original logic is to save suspicious results after reduction.
             self.config.database.insert_differential_test_results(differential_test_result, mutated_test_case)
 
     def step3(self, size: int):
@@ -170,28 +180,6 @@ class Fuzzer:
             if "TypeError" not in stderr:
                 return False
         return True
-
-    # def mutation(self, original_test_case: str) -> List[str]:
-    #     """ Mutate seed programs. """
-
-    #     mutated_test_case_list = []        
-    #     mutated_test_case_list.extend(self.config.mutator.mutate(original_test_case, max_size=20))
-    #     # Mutate using the folowing mutators in small probability.
-    #     rand_num = random.randint(0, 99)
-    #     if rand_num < 5:            
-    #         temp = self.config.mutator_arrayAndvar.mutate_longArrMethod(original_test_case, max_size=1)
-    #         if temp is not None:
-    #             mutated_test_case_list.extend(temp)
-    #     rand_num1 = random.randint(0, 99)
-    #     if rand_num1 < 5:            
-    #         temp = self.config.mutator_arrayAndvar.mutate_typearr(original_test_case, max_size=1)
-    #         if temp is not None:
-    #             mutated_test_case_list.extend(temp)
-    #     rand_num2 = random.randint(0, 99)
-    #     if rand_num2 < 5:            
-    #         mutated_test_case_list.extend(self.config.mutator_regex.mutate_regEx(original_test_case, max_size=1))
-    #     mutated_test_case_list.append(original_test_case)
-    #     return mutated_test_case_list
 
     def mutationByFlag(self, flag: int, original_test_case: str) -> List[str]:
         """  Mutate seed programs by querying the flag. """
