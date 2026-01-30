@@ -59,23 +59,22 @@ The version information of the tested engines is as follows:
 
 |Compiler|Version|Build No.|Source|Application|
 | --- | --- | --- | --- | --- |
-|MuJS|V1.0.7|90aca80|Artifex|Mobile devices/Embedded devices|
-|    |V1.3.2|0e611cd|       ||
-- 9ed5514
-- 771d593
-- a461685 XS
-V3.7.0 74aa31c
-Moddable Moddable SDK
-V2.6.0 fffa346 Embedded devices Duktape V2.7.0 03d4d72 –
-IoT devices
-- 8be6aec
-- bd1c4df
-- edd2f20 JerryScript
-V2.4.0 8ba0d1b
-Samsung Microcontrollers
-- 3ed8340 Hermes
-- b6530ae Facebook React native apps
-V2020-11-08 b1f67df QuickJS V2021-03-27 b5e6289 – Embedded devices
+|MuJS       |V1.0.7|90aca80|Artifex |Mobile devices/Embedded devices|
+|           |V1.3.2|0e611cd|        ||
+|XS         |-     |9ed5514|Moddable|Moddable SDK|
+|XS         |-     |771d593|        ||
+|XS         |-     |a461685|        ||
+|XS         |V3.7.0|74aa31c|        ||
+|Duktape    |V2.6.0|fffa346|-       |Embedded devices|
+|           |V2.7.0|03d4d72|        |IoT devices|
+|JerryScript|-     |8be6aec|Samsung |Microcontrollers|
+|           |-     |bd1c4df|        ||
+|           |-     |edd2f20|        ||
+|           |V2.4.0|8ba0d1b|        ||
+|Hermes     |-     |3ed8340|Facebook|React native apps|
+|           |-     |b6530ae|        ||
+|QuickJS    |V2020-11-08|b1f67df|-|Embedded devices|
+|           |V2021-03-27|b5e6289|||
 
 ### Observing the Results
 
