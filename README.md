@@ -51,6 +51,32 @@ python main.py --step=3 --size=[INPUT A NUMBER]
 
 _**NOTE.** The `--size` parameter is optional. If omitted, the default value is `100`. If the input size exceeds the number of available results in the database, the program will use only the available results._
 
+## Bug List
+
+Following double-blind reviewing, we are not sharing our bug list now. It will be made available after the paper is accepted.
+
+The version information of the tested engines is as follows:
+
+|Compiler|Version|Build No.|Source|Application|
+| --- | --- | --- | --- | --- |
+|MuJS|V1.0.7|90aca80|Artifex|Mobile devices/Embedded devices|
+|    |V1.3.2|0e611cd|       ||
+- 9ed5514
+- 771d593
+- a461685 XS
+V3.7.0 74aa31c
+Moddable Moddable SDK
+V2.6.0 fffa346 Embedded devices Duktape V2.7.0 03d4d72 –
+IoT devices
+- 8be6aec
+- bd1c4df
+- edd2f20 JerryScript
+V2.4.0 8ba0d1b
+Samsung Microcontrollers
+- 3ed8340 Hermes
+- b6530ae Facebook React native apps
+V2020-11-08 b1f67df QuickJS V2021-03-27 b5e6289 – Embedded devices
+
 ### Observing the Results
 
 You can find the results for each step of FuzzLi in the database file you specified in the [configuration file](EmbeddedFuzzer/resources/config.json).
@@ -109,6 +135,3 @@ The core modules are shown below.
 
 
 
-## Bug List
-
-Following double-blind reviewing, we are not sharing our bug list now. It will be made available after the paper is accepted.
