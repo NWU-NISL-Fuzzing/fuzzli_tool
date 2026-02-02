@@ -55,6 +55,8 @@ _**NOTE.** The `--size` parameter is optional. If omitted, the default value is 
 
 Following double-blind reviewing, we are not sharing our bug list now. It will be made available after the paper is accepted.
 
+## LiJS Engines
+
 The version information of the tested engines is as follows:
 
 |Compiler|Version|Build No.|Source|Application|
@@ -62,9 +64,9 @@ The version information of the tested engines is as follows:
 |MuJS       |V1.0.7|90aca80|Artifex |Mobile devices/Embedded devices|
 |           |V1.3.2|0e611cd|        ||
 |XS         |-     |9ed5514|Moddable|Moddable SDK|
-|XS         |-     |771d593|        ||
-|XS         |-     |a461685|        ||
-|XS         |V3.7.0|74aa31c|        ||
+|           |-     |771d593|        ||
+|           |-     |a461685|        ||
+|           |V3.7.0|74aa31c|        ||
 |Duktape    |V2.6.0|fffa346|-       |Embedded devices|
 |           |V2.7.0|03d4d72|        |IoT devices|
 |JerryScript|-     |8be6aec|Samsung |Microcontrollers|
