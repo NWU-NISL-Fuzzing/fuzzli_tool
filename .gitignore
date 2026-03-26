@@ -8,3 +8,4 @@ workspace/*.txt
 **/*1.py
 workspace/interesting_testcase*
 workspace/reduction*
+wait_for_deletion

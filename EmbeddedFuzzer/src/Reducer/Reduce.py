@@ -1,182 +1,136 @@
-import logging
-import math
-import time
+import subprocess
+import pathlib
+import random
+import os
 
+# import sys
+# sys.path.extend(['/home/fuzzli_tool/EmbeddedFuzzer', '/home/fuzzli_tool/EmbeddedFuzzer/resources', '/home/fuzzli_tool/EmbeddedFuzzer/src'])
+
+from Configer import Config
+from Reducer import simplifyTestcaseCore
+from utils import labdate
+from utils import JSASTOpt
 import Result
-import jsbeautifier
-from Reducer import reduce_by_line, simplifyTestcaseCore
-from utils.JSASTOpt import build_ast, generate_es_code
 
-start_time = time.time()
+
+config = Config("resources/config.json")
+testbed_path = pathlib.Path("resources/testbed.sh")
+testbed_content = testbed_path.read_text()
+output_jsfile_path = "/home/reduce/data_v3/test.js"
+output_shfile_path = "/home/reduce/data_v3/test.sh"
+
+def read_simplified_result():
+    if os.path.exists(output_jsfile_path):
+        testcase_path = pathlib.Path(output_jsfile_path)
+    else:
+        return None
+    simplified_testcase = testcase_path.read_text()
+    return simplified_testcase
+
+
+def use_vulcan():
+    """ Run Vulcan. """
+
+    command = "java -jar /home/reduce/perses_deploy.jar -t /home/reduce/test.sh --enable-vulcan true -i /home/reduce/test.js -o /home/reduce/data_v3"
+    try:
+        pro = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, universal_newlines=True, shell=True)
+        stdout, stderr =pro.communicate(timeout=600)
+        print(stdout)
+        print(stderr)
+    except subprocess.TimeoutExpired:
+        print("The process timed out after 10 minutes.")
+        pro.kill()  # Kill the process if it times out
+        return None
+    except:
+        traceback.print_exc()
+        return None
+    return read_simplified_result()
+
+
+def get_name_and_output(result):
+    """ Get engine name and extract key information from stdout and stderr. """
+
+    testbed = result.testbed
+    if "mujs" in testbed:
+        name = "mujs"
+    elif "hermes" in testbed:
+        name = "hermes"
+    elif "quickjs" in testbed:
+        name = "quickjs"
+    elif "jerryscript" in testbed:
+        name = "jerryscript"
+    elif "moddable" in testbed:
+        name = "xs"
+    elif "duktape" in testbed:
+        name = "duktape"
+    output = simplifyTestcaseCore.get_key_outputs(result).strip()
+    return name, output
+
+
+def construct_interestingness_script(badcc_name, normal_outputs: list):
+    """ Construct the customized interestingness test for one anomaly. """
+
+    with open('resources/template.sh', 'r') as f:
+        template = f.read()
+    exec_stmt = {
+        'mujs' : 'mujs_output=$( /home/engines/mujs/mujs-1.3.2/build/release/mujs "${test_file}" 2>&1 )',
+        'hermes' : 'hermes_output=$( /home/engines/hermes/hermes-0.12.0/build_release/bin/hermes -w "${test_file}" 2>&1 )',
+        'quickjs' : 'quickjs_output=$( /home/engines/quickjs/quickjs-2021-03-27/qjs "${test_file}" 2>&1 )',
+        'jerryscript' : 'jerryscript_output=$( /home/engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry "${test_file}" 2>&1 )',
+        'xs' : 'xs_output=$( /home/engines/XS/moddable-4.2.1/build/bin/lin/release/xst "${test_file}" 2>&1 )',
+        'duktape' : 'duktape_output=$( /home/engines/duktape/duktape-2.7.0/duk "${test_file}" 2>&1 )'
+    }
+    # Choose one from suspicious_outputs(BADCC). Version origianl and ours need to be same.
+    goodcc = random.choice(normal_outputs)
+    goodcc1 = normal_outputs[0]
+    goodcc_name1, goodcc_output1 = get_name_and_output(goodcc1)
+    check_str = ""
+    for goodcc2 in normal_outputs[1:]:
+        goodcc_name2, goodcc_output2 = get_name_and_output(goodcc2)
+        check_str += f'"${{{goodcc_name1}_output}}" == "${{{goodcc_name2}_output}}" && '
+    check_str += f'"${{{goodcc_name1}_output}}" != "${{{badcc_name}_output}}" '
+    script_content = f"""{testbed_content}
+if [[ {check_str} ]]; then
+    exit 0
+else
+    exit 1
+fi
+"""
+
+    # Write down.
+    shfile_path = '/home/reduce/test.sh'
+    with open(shfile_path, "w") as f:
+        f.write(template.replace("[REPLACE_HERE]", script_content))
+
+
+def construct_and_reduce(suspicious_output, normal_outputs: list):
+    """ Call construct_interestingness_script and active reduction tools (specified by `tool`). """
+
+    construct_interestingness_script(get_name_and_output(suspicious_output), normal_outputs)
+    simplify_start_time = labdate.GetUtcMillisecondsNow()
+    simplified_testcase = use_vulcan()
+    simplify_end_time = labdate.GetUtcMillisecondsNow()
+    simplify_duration_ms = labdate.Datetime2Ms(simplify_end_time - simplify_start_time)
+    if os.path.exists(output_jsfile_path):
+        os.remove(output_jsfile_path)
+    if os.path.exists(output_jsfile_path):
+        os.remove(output_shfile_path)
+    return simplified_testcase, simplify_duration_ms
+
 
 class Reducer:
-    def __init__(self, multi_threads: bool = True):
-        self.test_case_ast = None
-        self.harness_result = None
-        self.multi_threads = multi_threads
+    def reduce(self, suspicious_output, normal_outputs) -> str:
+        simplified_testcase, simplify_duration_ms = construct_and_reduce(suspicious_output, normal_outputs)
+        if simplified_testcase is None or len(simplified_testcase) == 0:
+            simplified_testcase = testcase
+        return simplified_testcase
 
-        
-        self.mutated_harness_result_list = None
-
-    def reduce(self, harness_result: Result.HarnessResult) -> str:
-
-        self.harness_result = harness_result
-        self.mutated_harness_result_list = []  
-        original_test_case = harness_result.testcase.strip()
-        try:
-            self.test_case_ast = build_ast(original_test_case)
-        except Exception as r:
-            
-            logging.info("Failed to extract AST. ")
-            [simplified_test_case, new_bugs_list] = reduce_by_line.sample_by_statement(harness_result)
-            self.mutated_harness_result_list = new_bugs_list
-            return self.beautify_test_case(simplified_test_case)
-
-        self.traverse(self.test_case_ast)  
-        
-        self.peeling(self.test_case_ast)  
-        return generate_es_code(self.test_case_ast)
-
-    def traverse(self, node: dict, lithium_algorithm=False):
-
-        end_time = time.time()
-        duration = end_time - start_time
-        if duration > 6000:
-            return
-
-        
-        for key, values in reversed(list(node.items())):
-            
-            if type(values) == list:
-                
-                remained = 1 if key == "declarations" else 0
-                
-                if lithium_algorithm:
-                    self.ddmin(values, remained)
-                else:
-                    
-                    
-                    if len(values) > 1:
-                        node[key] = []
-                        [removable, new_bug] = self.removable()
-                        if new_bug is not None:
-                            self.mutated_harness_result_list.append(new_bug)
-                        if removable:
-                            continue
-                        else:
-                            
-                            node[key] = values
-                    
-                    for index in range(len(values) - 1, -1, -1):
-                        
-                        tmp_node = values.pop(index)
-                        [removable, new_bug] = self.removable()
-                        if new_bug is not None:
-                            self.mutated_harness_result_list.append(new_bug)
-                        if removable:
-                            continue
-                        else:
-                            
-                            values.insert(index, tmp_node)
-                            
-                            self.traverse(tmp_node)
-            
-            elif values is not None and type(values) == dict and key != "loc":
-                self.traverse(values)  
-
-    def ddmin(self, arr: list, remained: int):
-
-        size = len(arr)
-        if size == 0:
-            return
-        
-        chunk_size = 2 ** int(math.log2(size))
-        while chunk_size >= 1:
-            
-            size = len(arr)
-            for index in range(size - chunk_size, -1, -chunk_size):
-                if len(arr) <= remained:  
-                    self.traverse(arr[index])
-                    return
-                logging.debug(f"Try to deleting:{index} - {index + chunk_size}")
-                
-                tmp_deleted = multi_pop(arr, index, index + chunk_size)
-                
-                [removable, new_bug] = self.removable()
-                if new_bug is not None:
-                    self.mutated_harness_result_list.append(new_bug)
-                if not removable:  
-                    
-                    multi_push(arr, index, tmp_deleted)
-                    
-                    if chunk_size == 1:
-                        self.traverse(arr[index])
-            
-            chunk_size = chunk_size >> 1
-
-    def peeling(self, test_case_ast: dict):
-
-        queue = [test_case_ast]
-        while len(queue) > 0:
-            node = queue.pop(0)
-            
-            for key, value in node.items():
-                if key == 'type' and value == "VariableDeclaration":
-                    for dec in node["declarations"]:
-                        if not dec["init"] is None and dec["init"]["type"] == "FunctionExpression":
-                            queue.append(dec["init"]["body"])
-                elif type(value) == list and key == "body":
-                    child_node_list = value
-                    for index in range(len(child_node_list) - 1, -1, -1):
-                        
-                        
-                        tmp_node = child_node_list[index]
-                        try:
-                            if tmp_node["type"] == "ForStatement" \
-                                    and tmp_node["init"]["declarations"][0]["id"]["name"] == "INDEX":
-                                
-                                
-                                child_node_list[index] = tmp_node["body"]["body"][0]
-                                removable = self.removable()[0]
-                                if removable:
-                                    return
-                                else:
-                                    
-                                    child_node_list[index] = tmp_node
-                        except BaseException as e:
-                            child_node_list[index] = tmp_node
-                            pass
-                        queue.append(child_node_list[index])
-                elif type(value) == dict and key != "loc":
-                    queue.append(value)
-
-    def removable(self):
-
-        try:
-            tmp_code = generate_es_code(self.test_case_ast)
-        except BaseException as e:
-            return [False, None]
-        
-        return simplifyTestcaseCore.is_removable(self.harness_result, tmp_code)
-
-    @staticmethod
-    def beautify_test_case(test_case: str) -> str:
-
-        beautified_test_case = str(test_case).split("\n")
-        for index in range(len(beautified_test_case) - 1, -1, -1):
-            if beautified_test_case[index].strip() == '':
-                beautified_test_case.pop(index)
-        beautified_test_case = "\n".join(beautified_test_case)
-        return jsbeautifier.beautify(beautified_test_case)
-
-
-def multi_pop(arr: list, start: int, end: int):
-    deleted_arr = []
-    for num in range(end - start):
-        deleted_arr.append(arr.pop(start))
-    return deleted_arr
-
-
-def multi_push(arr: list, start: int, to_added: list):
-    for tmp_index in range(len(to_added) - 1, -1, -1):
-        arr.insert(start, to_added[tmp_index])
+if __name__ == '__main__':
+    reducer = Reducer()
+    with open("/home/reduce/test.js", "r") as f:
+        testcase = f.read()
+    result = config.harness.run_testcase(testcase)
+    [suspicious_outputs, normal_outputs] = simplifyTestcaseCore.split_output(result)
+    simplified_testcase = reducer.reduce(suspicious_outputs[0], normal_outputs)
+    print(simplified_testcase)

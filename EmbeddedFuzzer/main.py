@@ -69,13 +69,13 @@ class Fuzzer:
             original_test_case = self.config.callable_processor.get_self_calling(sample)
             original_test_case_id = self.config.database.insert_original_testcase(testcase=original_test_case, sample=sample)
             self.config.database.commit()
-            if self.premutation(original_test_case):
+            if self.filter_syntax_error(original_test_case):
                 self.config.database.update_sample_status(sample)
                 continue
             flag = self.config.database.query_flag(original_test_case_id)
             print(original_test_case_id)
             flag = int(flag, 2)
-            mutated_test_case_list=self.mutationByFlag(flag, original_test_case)
+            mutated_test_case_list=self.mutate_by_flag(flag, original_test_case)
             # Step2. Differential testing.
             for mutated_test_case in mutated_test_case_list:
                 harness_result = self.config.harness.run_testcase(mutated_test_case)
@@ -109,13 +109,13 @@ class Fuzzer:
             original_test_case = self.config.callable_processor.get_self_calling(sample)
             print("original_test_case:\n"+original_test_case)
             original_test_case_id = self.config.database.insert_original_testcase(testcase=original_test_case, sample=sample)
-            if self.premutation(original_test_case):
+            if self.filter_syntax_error(original_test_case):
                 self.config.database.update_sample_status(sample)
                 continue
             flag = self.config.database.query_flag(original_test_case_id)
             print(original_test_case_id)
             flag = int(flag, 2)
-            mutated_test_case_list = self.mutationByFlag(flag, original_test_case)
+            mutated_test_case_list = self.mutate_by_flag(flag, original_test_case)
    
     def step2(self, size: int):
         """ Step2. Differential testing. """
@@ -169,7 +169,7 @@ class Fuzzer:
             self.save_interesting_test_case(uniformed_test_case)
         self.config.database.update_sample_status(sample)
     
-    def premutation(self, original_test_case: str) -> bool:
+    def filter_syntax_error(self, original_test_case: str) -> bool:
         """ Filter seed programs that contain syntax errors. """
 
         harness_result = self.config.harness.run_testcase(original_test_case)
@@ -181,13 +181,13 @@ class Fuzzer:
                 return False
         return True
 
-    def mutationByFlag(self, flag: int, original_test_case: str) -> List[str]:
+    def mutate_by_flag(self, flag: int, original_test_case: str) -> List[str]:
         """  Mutate seed programs by querying the flag. """
         
         mutated_test_case_list = []
         # If loop mutator is available, use it to mutate the seed program.
         if LOOP_MUTATOR and (flag & 0b10000 ==0b10000):
-            differ=self.getTime(original_test_case)
+            differ=self.get_time(original_test_case)
             if differ > 30:
                 mutated_test_case_list.extend(self.config.mutator.mutate(original_test_case, max_size=20))
         # If array mutator is available, use it to mutate the seed program.
@@ -229,7 +229,7 @@ class Fuzzer:
         logging.info(f"\nInteresting test case is writen to the file:\n {file_path}")
         file_path.write_text(test_case) 
    
-    def getTime(self, originalTestcase:str) -> int:
+    def get_time(self, originalTestcase:str) -> int:
         """ Get the time difference of the test case. """
 
         harness_result = self.config.harness.run_testcase(originalTestcase)

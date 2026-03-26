@@ -4,8 +4,6 @@ ENV LANG C.UTF-8
 
 WORKDIR /home
 
-ENV http_proxy="http://10.15.22.192:7810"
-ENV https_proxy="http://10.15.22.192:7810"
 RUN apt-get -y update
 
 RUN apt-get install -y python3-pip openssh-server zip vim git nodejs npm pkg-config mysql-server screen
@@ -25,6 +23,3 @@ WORKDIR /home/fuzzli_tool/EmbeddedFuzzer
 RUN npm install esprima estraverse escodegen
 
 RUN echo "cd /home/fuzzli_tool" >> ~/.bashrc
-
-ENV http_proxy=
-ENV https_proxy=

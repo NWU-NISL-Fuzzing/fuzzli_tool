@@ -2,13 +2,12 @@
 
 This is a fuzzer for lightweight JavaScript engines.
 
-
-
 ## Installment
 
 1. Create a Docker image.
 
 ```
+cd setup
 docker build -t fuzzli .
 ```
 
@@ -17,8 +16,6 @@ docker build -t fuzzli .
 ```
 docker run -d -it -p xxxx:22 --name fuzzli fuzzli:v1.0
 ```
-
-
 
 ## Usage
 
@@ -92,8 +89,6 @@ You can find the results for each step of FuzzLi in the database file you specif
 | Outputs | Execution results of test cases |
 | Testcases | Mutated test cases |
 
-
-
 ## Introduction of Implementation of FuzzLi
 
 For users interested in the internal workings of FuzzLi, we provide a brief overview of its implementation.
@@ -109,7 +104,7 @@ original_test_case = self.config.callable_processor.get_self_calling(simple)
 It then mutates the seed program to produce a list of test cases:
 
 ```
-mutated_test_case_list = self.mutationByFlag(flag, original_test_case)
+mutated_test_case_list = self.mutate_by_flag(flag, original_test_case)
 ```
 
 The third step is differential testing.
@@ -128,11 +123,9 @@ The core modules are shown below.
 
 | Module                  | Path                                                         |
 | ----------------------- | ------------------------------------------------------------ |
-| configuration           | EmbeddedFuzzer\resources\config.json             |
-| seed program generation | EmbeddedFuzzer\src\Postprocessor\callable_processor.py |
-| mutation                | EmbeddedFuzzer\src\Mutator                       |
-| differential testing    | EmbeddedFuzzer\src\Harness.py                    |
-| reducer                 | EmbeddedFuzzer\src\Reducer                       |
-
-
-
+| configuration           | EmbeddedFuzzer/resources/config.json                         |
+| code snippet collection | EmbeddedFuzzer/src/Postprocessor/postprocessor.py            |
+| seed program generation | EmbeddedFuzzer/src/Postprocessor/callable_processor.py       |
+| mutation                | EmbeddedFuzzer/src/Mutator                                   |
+| differential testing    | EmbeddedFuzzer/src/Harness.py                                |
+| reducer                 | EmbeddedFuzzer/src/Reducer                                   |
