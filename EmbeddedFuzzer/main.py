@@ -4,10 +4,15 @@ import logging
 import argparse
 from tqdm import tqdm
 from typing import List
+from pathlib import Path
 from termcolor import cprint
 
 import sys
-sys.path.extend(['../EmbeddedFuzzer', '../EmbeddedFuzzer/src'])
+current_script_dir = os.path.dirname(os.path.abspath(__file__))
+print(current_script_dir)
+src_path = os.path.join(current_script_dir, "src")
+sys.path.insert(0, src_path)
+# sys.path.extend(['../EmbeddedFuzzer', '../EmbeddedFuzzer/src'])
 
 from utils import crypto
 from Configer import Config
@@ -52,10 +57,12 @@ class Fuzzer:
             self.config.close_resources()
 
     def step0(self, size: int):
-        if os.path.exists("/home/fuzzli_tool/workspace/interesting_testcase"):
+        current_dir = Path.cwd()
+        interesting_path = current_dir.replace("EmbeddedFuzzer", "workspace/interesting_testcase")
+        if os.path.exists(interesting_path):
             choice = input("interesting_testcase exists, do you want to delete it? (y/n)")
             if choice == "y":
-                os.system("rm -rf /home/fuzzli_tool/workspace/interesting_testcase")
+                os.system(f"rm -rf {interesting_path}")
             elif choice == "n":
                 pass
             else:
@@ -153,6 +160,8 @@ class Fuzzer:
             cprint("The specific size is larger than the number of samples, so we use the number of samples instead.", "yellow")
         for i in range(size):
             anomaly = anomalies[i]
+            print(">>>anomaly:", anomaly)
+            return
             results = self.config.database.query_harness_result(anomaly[2])
             [suspicious_outputs, normal_outputs] = simplifyTestcaseCore.split_output(results)
             for suspicious_output in suspicious_outputs:

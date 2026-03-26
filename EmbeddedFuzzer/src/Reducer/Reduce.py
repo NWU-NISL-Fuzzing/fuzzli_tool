@@ -6,14 +6,14 @@ import os
 # import sys
 # sys.path.extend(['/home/fuzzli_tool/EmbeddedFuzzer', '/home/fuzzli_tool/EmbeddedFuzzer/resources', '/home/fuzzli_tool/EmbeddedFuzzer/src'])
 
-from Configer import Config
+# from Configer import Config
 from Reducer import simplifyTestcaseCore
 from utils import labdate
 from utils import JSASTOpt
 import Result
 
 
-config = Config("resources/config.json")
+# config = Config("resources/config.json")
 testbed_path = pathlib.Path("resources/testbed.sh")
 testbed_content = testbed_path.read_text()
 output_jsfile_path = "/home/reduce/data_v3/test.js"

@@ -7,7 +7,7 @@
     "../engines/hermes/hermes-0.12.0/build_release/bin/hermes -w",
     "../engines/quickjs/quickjs-2021-03-27/qjs",
     "../engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry",
-    "../engines/XS/moddable-3.7.0/build/bin/lin/release/xst",
+    "../engines/xs/moddable-3.7.0/build/bin/lin/release/xst",
     "../engines/duktape/duktape-2.7.0/duk",
     "../engines/mujs/mujs-1.3.2/build/release/mujs"
   ],
