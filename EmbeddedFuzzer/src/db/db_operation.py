@@ -8,7 +8,9 @@ from Result import *
 class DBOperation:
     def __init__(self, db_path: str):  
         self.conn = sqlite3.connect(db_path)
-        self.create_tables()
+        choice = input("Recreate tables? (y/n) ")
+        if choice == "y":
+            self.create_tables()
 
     def close(self):
         self.conn.close()
@@ -192,7 +194,7 @@ class DBOperation:
         return self.query_template(sql)
     
     def query_anomalies(self):
-        sql = "SELECT * FROM DifferentialTestResults"
+        sql = "SELECT * FROM DifferentialTestResults WHERE bug_type = 'Excessive time difference'"
         return self.query_template(sql)
     
     def query_results_by_output_id(self, output_id: int):
@@ -202,6 +204,18 @@ class DBOperation:
         res2 = self.query_template(sql2, [res1[0][0]])
         return res2
 
+    def query_testbed_by_output_id(self, output_id: int):
+        sql = "SELECT testbed_id FROM Outputs WHERE id=?"
+        res = self.query_template(sql, [output_id])
+        return res[0][0]
+
+    def query_testcase_by_output_id(self, output_id: int):
+        sql1 = "SELECT testcase_id FROM Outputs WHERE id=?"
+        res1 = self.query_template(sql1, [output_id])
+        sql2 = "SELECT testcase FROM Testcases WHERE original_testcase_id=?"
+        res2 = self.query_template(sql2, [res1[0][0]])
+        return res2[0][0], res1[0][0]
+    
     def update_test_case_manual_checked_state(self, test_case_id: int):
         cursor = self.conn.cursor()
         sql = "update Testcases set is_manual_check=1 WHERE id=?"

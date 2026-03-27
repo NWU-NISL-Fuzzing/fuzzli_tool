@@ -31,8 +31,8 @@ class Config:
         self.database = db_operation.DBOperation(str(db_path))
         self.harness = Harness(config["testbeds"], config["harness"]["mode"], config["harness"]["processes_num"])
         self.testbed_parser = TestbedParser(config["testbeds"])
-        self.classify_db = DataBase(config["classify_db"])
-        self.classifier = Classifier(self.api_instance, self.testbed_parser, self.classify_db)
+        # self.classify_db = DataBase(config["classify_db"])
+        # self.classifier = Classifier(self.api_instance, self.testbed_parser, self.classify_db)
         self.mutator = Mutator("node")
         self.mutator_arrayAndvar = Mutator_arrayAndvar("node")
         self.mutator_regex = Mutator_regex("node")
@@ -63,7 +63,7 @@ class Config:
             conn = sqlite3.connect(sample_db)
             # raise FileNotFoundError(f"Corpus db file not exist: {sample_db}")
         
-        classify_db = pathlib.Path(config["classify_db"])
+        # classify_db = pathlib.Path(config["classify_db"])
         
 
         

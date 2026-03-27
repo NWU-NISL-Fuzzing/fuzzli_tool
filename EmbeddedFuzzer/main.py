@@ -9,7 +9,7 @@ from termcolor import cprint
 
 import sys
 current_script_dir = os.path.dirname(os.path.abspath(__file__))
-print(current_script_dir)
+# print(current_script_dir)
 src_path = os.path.join(current_script_dir, "src")
 sys.path.insert(0, src_path)
 # sys.path.extend(['../EmbeddedFuzzer', '../EmbeddedFuzzer/src'])
@@ -155,20 +155,31 @@ class Fuzzer:
 
         cprint("Step3. Reduce.", "blue")
         anomalies = self.config.database.query_anomalies()
+        print(len(anomalies))
         if size > len(anomalies):
             size = len(anomalies)
             cprint("The specific size is larger than the number of samples, so we use the number of samples instead.", "yellow")
         for i in range(size):
             anomaly = anomalies[i]
-            print(">>>anomaly:", anomaly)
-            return
-            results = self.config.database.query_harness_result(anomaly[2])
-            [suspicious_outputs, normal_outputs] = simplifyTestcaseCore.split_output(results)
-            for suspicious_output in suspicious_outputs:
-                if anomaly.testbed_id == suspicious_output.testbed_id:
-                    current = suspicious_output
-                    break
-            simplified_test_case = self.config.reducer.reduce(current, normal_outputs)
+            # print(">>>anomaly:", anomaly)
+            # return
+            # (1, 'Most pass *** run error', 203, None, None, None, None, None, None, None)
+            anomaly_type = anomaly[1]
+            output_id = anomaly[2]
+            if anomaly_type in ["Excessive time difference", "Timeout"]:
+                testcase, testcase_id = self.config.database.query_testcase_by_output_id(output_id)
+                print(testcase)
+                print(testcase_id)
+                testbed_id = self.config.database.query_testbed_by_output_id(output_id)
+                simplified_test_case = self.config.reducer.reduce_performance(testcase, testcase_id, testbed_id)
+            else:
+                results = self.config.database.query_results_by_output_id(output_id)
+                [suspicious_outputs, normal_outputs] = simplifyTestcaseCore.split_output(results)
+                for suspicious_output in suspicious_outputs:
+                    if anomaly.testbed_id == suspicious_output.testbed_id:
+                        current = suspicious_output
+                        break
+                simplified_test_case = self.config.reducer.reduce_functional(current, normal_outputs)
             uniformed_test_case = self.uniform(simplified_test_case)
             new_harness_result = self.config.harness.run_testcase(uniformed_test_case)
             new_differential_test_result = Result.differential_test(new_harness_result)
@@ -176,7 +187,7 @@ class Fuzzer:
                 continue
             self.config.database.insert_differential_test_results(new_differential_test_result, mutated_test_case)
             self.save_interesting_test_case(uniformed_test_case)
-        self.config.database.update_sample_status(sample)
+        # self.config.database.update_sample_status(sample)
     
     def filter_syntax_error(self, original_test_case: str) -> bool:
         """ Filter seed programs that contain syntax errors. """

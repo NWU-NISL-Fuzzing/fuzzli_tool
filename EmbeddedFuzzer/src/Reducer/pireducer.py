@@ -4,6 +4,7 @@ import subprocess
 import json
 import time
 import math
+import sys
 import os
 import re
 
@@ -11,11 +12,14 @@ import re
 
 # bug_type = "timeout"
 # bug_type = "etd"
-bug_type = "performance"
-NODE_PATH = "/home/fuzzli_tool/EmbeddedFuzzer/node_modules"
-INSTRUMENT_JS_PATH = "/home/fuzzli_tool/EmbeddedFuzzer/src/Reducer/instrument.js"
 # TESTCASE_PATH = f"/home/fuzzli_tool/workspace/reduction-{bug_type}-20250717"
-TESTCASE_PATH = f"/home/fuzzli_tool/workspace/fuzzlia-random-100"
+# TESTCASE_PATH = f"/home/fuzzli_tool/workspace/fuzzlia-random-100"
+bug_type = "performance"
+current_script_dir = os.path.dirname(os.path.abspath(__file__))
+print(current_script_dir)
+word_dir = current_script_dir.replace("src/Reducer", "")
+NODE_PATH = os.path.join(word_dir, "node_modules")
+TESTCASE_PATH = os.path.join(word_dir, "../workspace/fuzzli-20260327")
 if not os.path.exists(TESTCASE_PATH):
     os.makedirs(TESTCASE_PATH)
     print("Create TESTCASE_PATH.")
@@ -42,7 +46,7 @@ def transform_js_code(original: str) -> str:
 
     result = subprocess.run([
         "npx", "babel", original,
-        "--plugins", "/home/fuzzli_tool/EmbeddedFuzzer/src/Reducer/decompose_complex_stmt.js"
+        "--plugins", f"{word_dir}/src/Reducer/decompose_complex_stmt.js"
     ], capture_output=True, text=True)
     if result.returncode != 0:
         print("Babel transform failed:")
@@ -56,10 +60,13 @@ def instrument_code(js_code):
     Only the leaf nodes in main function are instrumented.
     """
 
-    main_func = js_code[:js_code.index("\n};\n")+3]
+    if "\n};\n" in js_code:
+        main_func = js_code[:js_code.index("\n};\n")+3]
+    else:
+        main_func = js_code[:js_code.index("\n}\n")+3]
     print("main_func:\n"+main_func)
     process = subprocess.Popen(
-        ['node', INSTRUMENT_JS_PATH],
+        ['node', os.path.join(word_dir, "src/Reducer/instrument.js")],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -71,7 +78,10 @@ def instrument_code(js_code):
     if process.returncode != 0:
         raise RuntimeError(f"Babel instrumentation failed:\n{stderr}")
 
-    return stdout+js_code[js_code.index("\n};\n")+3:]
+    if "\n};\n" in js_code:
+        return stdout+js_code[js_code.index("\n};\n")+3:]
+    else:
+        return stdout+js_code[js_code.index("\n}\n")+3:]
 
 def get_variables_on_line(filename: str, target_line: list):
     """ Get the variable names on the target line. """
@@ -79,7 +89,7 @@ def get_variables_on_line(filename: str, target_line: list):
     print("target_line:", target_line)
     try:
         result = subprocess.run(
-            ['node', 'analyze_vars.js', filename, int_list_to_str(target_line)],
+            ['node', f'{word_dir}/src/Reducer/analyze_vars.js', filename, int_list_to_str(target_line)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True,
@@ -94,18 +104,18 @@ def run_js(filename, testbed_id):
     """ Run the instrumented JS file using specific JS engine and return the execution time of each line. """
 
     testbed = {
-        1: "/home/fuzzli_tool/engines/hermes/hermes-0.12.0/build_release/bin/hermes",
-        2: "/home/fuzzli_tool/engines/quickjs/quickjs-2021-03-27/qjs",
-        3: "/home/fuzzli_tool/engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry",
-        4: "/home/fuzzli_tool/engines/XS/moddable-3.7.0/build/bin/lin/release/xst",
-        5: "/home/fuzzli_tool/engines/duktape/duktape-2.7.0/duk",
-        6: "/home/fuzzli_tool/engines/mujs/mujs-1.3.2/build/release/mujs",
-        7: "/home/fuzzli_tool/engines/hermes/hermes-0.12.0/build_release/bin/hermes",
-        8: "/home/fuzzli_tool/engines/quickjs/quickjs-2021-03-27/qjs",
-        9: "/home/fuzzli_tool/engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry",
-        10: "/home/fuzzli_tool/engines/XS/moddable-3.7.0/build/bin/lin/release/xst",
-        11: "/home/fuzzli_tool/engines/duktape/duktape-2.7.0/duk",
-        12: "/home/fuzzli_tool/engines/mujs/mujs-1.3.2/build/release/mujs"
+        1: f"{word_dir}/../engines/hermes/hermes-0.12.0/build_release/bin/hermes",
+        2: f"{word_dir}/../engines/quickjs/quickjs-2021-03-27/qjs",
+        3: f"{word_dir}/../engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry",
+        4: f"{word_dir}/../engines/XS/moddable-3.7.0/build/bin/lin/release/xst",
+        5: f"{word_dir}/../engines/duktape/duktape-2.7.0/duk",
+        6: f"{word_dir}/../engines/mujs/mujs-1.3.2/build/release/mujs",
+        7: f"{word_dir}/../engines/hermes/hermes-0.12.0/build_release/bin/hermes",
+        8: f"{word_dir}/../engines/quickjs/quickjs-2021-03-27/qjs",
+        9: f"{word_dir}/../engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry",
+        10: f"{word_dir}/../engines/XS/moddable-3.7.0/build/bin/lin/release/xst",
+        11: f"{word_dir}/../engines/duktape/duktape-2.7.0/duk",
+        12: f"{word_dir}/../engines/mujs/mujs-1.3.2/build/release/mujs"
     }
     # result = subprocess.run(["timeout", "-s", "TERM", "30", testbed[testbed_id], filename], capture_output=True, text=True)
     cmd = ['stdbuf', '-oL', testbed[testbed_id], filename]
@@ -169,7 +179,7 @@ def delete_node(filename, to_be_deleted):
 
     try:
         result = subprocess.run(
-            ['node', 'delete_node.js', filename, to_be_deleted],
+            ['node', f'{word_dir}/src/Reducer/delete_node.js', filename, to_be_deleted],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True,
@@ -186,7 +196,7 @@ def delete_node_without_vars(filename: str, to_be_deleted: str, var_list: str):
     if type(to_be_deleted) != str:
         raise TypeError("to_be_deleted should be a string")
     try:
-        cmd = ['node', 'delete_node_without_vars.js', filename, to_be_deleted, var_list]
+        cmd = ['node', f'{word_dir}/src/Reducer/delete_node_without_vars.js', filename, to_be_deleted, var_list]
         print("cmd:"+" ".join(cmd))
         result = subprocess.run(
             cmd,
@@ -214,7 +224,6 @@ def delete_useless_stmt(filename, sorted_d1_time_dict, inst_num):
             to_be_kept = set(range(inst_num)) - set(to_be_deleted)
         # Situation 3. Statements that successfully execute spend more than 0s.
         elif list(sorted_d1_time_dict.values()).count(0.0) != len(sorted_d1_time_dict):
-            # 如果有语句的运行时间未统计上，补全再进行分类
             if len(sorted_d1_time_dict) != inst_num:
                 for i in range(inst_num):
                     if i not in sorted_d1_time_dict:
@@ -238,7 +247,6 @@ def delete_useless_stmt(filename, sorted_d1_time_dict, inst_num):
             else:
                 to_be_deleted_before.append(i)
         if len(to_be_deleted_after) > 0:
-            print("存在可以直接删除的行：", to_be_deleted_after)
             deleted = delete_node(filename, int_list_to_str(to_be_deleted_after))
             print("deleted:\n"+deleted)
             write_down(filename, deleted)
@@ -252,25 +260,23 @@ def delete_useless_stmt(filename, sorted_d1_time_dict, inst_num):
 def remove_dead_code(reduced_path, postprocessed_path):
     """ Use terser remove dead code. """
 
-    # 替换_tmp1等变量名
+    # replace _tmp1 ...
     with open(reduced_path, "r") as f:
         postprocessed = f.read()
     for var_name in re.finditer(r"var (tmp[0-9]+)=(.*?);", postprocessed):
         postprocessed = postprocessed.replace(var_name.group(0), "")
         postprocessed = postprocessed.replace(var_name.group(1), var_name.group(2))
-    # 删除变量赋值语句外循环
-    # print("im here")
+    # delete loops wrapped on variable declarations
     # print(postprocessed)
     var_dec_in_loop = re.search(r"for \(var INDEX = 0; INDEX < 1000; INDEX\+\+\) \{[\s]+(var NISLParameter[0-9]+ = [\s\S]+?)\n\}", postprocessed)
     if var_dec_in_loop:
-        # print("存在循环多次定义变量")
         postprocessed = postprocessed.replace(var_dec_in_loop.group(0), var_dec_in_loop.group(1))
         # print(postprocessed)
     write_down(postprocessed_path, postprocessed)
-    # 删除调用主函数时无用的参数
+    # delete useless parameters in main function
     try:
         result = subprocess.run(
-            ['node', 'remove_unused_args.js', postprocessed_path],
+            ['node', f'{word_dir}/src/Reducer/remove_unused_args.js', postprocessed_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=True,
@@ -279,7 +285,7 @@ def remove_dead_code(reduced_path, postprocessed_path):
         write_down(postprocessed_path, result.stdout)
     except subprocess.CalledProcessError as e:
         print("Error running Node script:", e.stderr)
-    # 用terser进行压缩
+    # call terser
     try:
         subprocess.run([
             "terser", postprocessed_path,
@@ -291,8 +297,31 @@ def remove_dead_code(reduced_path, postprocessed_path):
     except subprocess.CalledProcessError as e:
         print("Terser Error:", e.stderr)
 
+def simplify_one(testcase, testcase_id, testbed_id):
+    original_path = TESTCASE_PATH+f"/{testcase_id}.js"
+    print("original_path:", original_path)
+    write_down(original_path, testcase)
+    # 0. split complex statements into simple statements
+    splited = transform_js_code(original_path)
+    splited_path = TESTCASE_PATH+f"/{testcase_id}_splited.js"
+    write_down(splited_path, splited)
+    # 1. instrument testcase
+    instrumented = instrument_code(splited)
+    # print(instrumented)
+    instrumented_path = TESTCASE_PATH+f"/{testcase_id}_instrumented.js"
+    write_down(instrumented_path, instrumented)
+    # 2. run instrumented testcase
+    sorted_d1_time_dict, inst_num = run_js(instrumented_path, testbed_id)
+    # 3. delete useless codes
+    reduced = delete_useless_stmt(splited_path, sorted_d1_time_dict, inst_num)
+    reduced_path = TESTCASE_PATH+f"/{testcase_id}_reduced.js"
+    write_down(reduced_path, reduced)
+    # 4. remove dead code
+    postprocessed_path = TESTCASE_PATH+f"/{testcase_id}_postprocessed.js"
+    postprocessed = remove_dead_code(reduced_path, postprocessed_path)
+    return postprocessed
+
 def main():
-    # with open(f"/home/fuzzli_tool/workspace/{bug_type}.json", "r") as f:
     with open("/home/reduce/fuzzlia_random_100/performance_bugs_fuzzlia.json", "r" ) as f:
         data = json.load(f)
     result = ""

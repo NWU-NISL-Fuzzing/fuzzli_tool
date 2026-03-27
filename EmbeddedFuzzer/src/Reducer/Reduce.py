@@ -8,6 +8,7 @@ import os
 
 # from Configer import Config
 from Reducer import simplifyTestcaseCore
+from Reducer import pireducer
 from utils import labdate
 from utils import JSASTOpt
 import Result
@@ -120,8 +121,14 @@ def construct_and_reduce(suspicious_output, normal_outputs: list):
 
 
 class Reducer:
-    def reduce(self, suspicious_output, normal_outputs) -> str:
+    def reduce_functional(self, suspicious_output, normal_outputs) -> str:
         simplified_testcase, simplify_duration_ms = construct_and_reduce(suspicious_output, normal_outputs)
+        if simplified_testcase is None or len(simplified_testcase) == 0:
+            simplified_testcase = testcase
+        return simplified_testcase
+    
+    def reduce_performance(self, testcase, testcase_id, testbed_id):
+        simplified_testcase = pireducer.simplify_one(testcase, testcase_id, testbed_id)
         if simplified_testcase is None or len(simplified_testcase) == 0:
             simplified_testcase = testcase
         return simplified_testcase
