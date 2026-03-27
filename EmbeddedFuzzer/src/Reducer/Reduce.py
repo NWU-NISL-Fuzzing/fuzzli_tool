@@ -13,12 +13,11 @@ from utils import labdate
 from utils import JSASTOpt
 import Result
 
-
 # config = Config("resources/config.json")
 testbed_path = pathlib.Path("resources/testbed.sh")
 testbed_content = testbed_path.read_text()
-output_jsfile_path = "/home/reduce/data_v3/test.js"
-output_shfile_path = "/home/reduce/data_v3/test.sh"
+output_jsfile_path = f"resources/test.js"
+output_shfile_path = f"resources/test.sh"
 
 def read_simplified_result():
     if os.path.exists(output_jsfile_path):
@@ -32,7 +31,7 @@ def read_simplified_result():
 def use_vulcan():
     """ Run Vulcan. """
 
-    command = "java -jar /home/reduce/perses_deploy.jar -t /home/reduce/test.sh --enable-vulcan true -i /home/reduce/test.js -o /home/reduce/data_v3"
+    command = "java -jar resources/perses_deploy.jar -t resources/test.sh --enable-vulcan true -i resources/test.js -o resources"
     try:
         pro = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, universal_newlines=True, shell=True)
@@ -53,18 +52,34 @@ def get_name_and_output(result):
     """ Get engine name and extract key information from stdout and stderr. """
 
     testbed = result.testbed
-    if "mujs" in testbed:
-        name = "mujs"
-    elif "hermes" in testbed:
-        name = "hermes"
-    elif "quickjs" in testbed:
-        name = "quickjs"
-    elif "jerryscript" in testbed:
-        name = "jerryscript"
-    elif "moddable" in testbed:
-        name = "xs"
-    elif "duktape" in testbed:
-        name = "duktape"
+    if type(testbed) is str:
+        if "mujs" in testbed:
+            name = "mujs"
+        elif "hermes" in testbed:
+            name = "hermes"
+        elif "quickjs" in testbed:
+            name = "quickjs"
+        elif "jerryscript" in testbed:
+            name = "jerryscript"
+        elif "moddable" in testbed:
+            name = "xs"
+        elif "duktape" in testbed:
+            name = "duktape"
+    elif type(testbed) is int:
+        if testbed in (1, 7):
+            name = "hermes"
+        elif testbed in (2, 8):
+            name = "quickjs"
+        elif testbed in (3, 9):
+            name = "jerryscript"
+        elif testbed in (4, 10):
+            name = "xs"
+        elif testbed in (5, 11):
+            name = "duktape"
+        elif testbed in (6, 12):
+            name = "mujs"
+    else:
+        raise ValueError("Unknown testbed type")
     output = simplifyTestcaseCore.get_key_outputs(result).strip()
     return name, output
 
@@ -75,12 +90,12 @@ def construct_interestingness_script(badcc_name, normal_outputs: list):
     with open('resources/template.sh', 'r') as f:
         template = f.read()
     exec_stmt = {
-        'mujs' : 'mujs_output=$( /home/engines/mujs/mujs-1.3.2/build/release/mujs "${test_file}" 2>&1 )',
-        'hermes' : 'hermes_output=$( /home/engines/hermes/hermes-0.12.0/build_release/bin/hermes -w "${test_file}" 2>&1 )',
-        'quickjs' : 'quickjs_output=$( /home/engines/quickjs/quickjs-2021-03-27/qjs "${test_file}" 2>&1 )',
-        'jerryscript' : 'jerryscript_output=$( /home/engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry "${test_file}" 2>&1 )',
-        'xs' : 'xs_output=$( /home/engines/XS/moddable-4.2.1/build/bin/lin/release/xst "${test_file}" 2>&1 )',
-        'duktape' : 'duktape_output=$( /home/engines/duktape/duktape-2.7.0/duk "${test_file}" 2>&1 )'
+        'mujs' : 'mujs_output=$( /home/fuzzli_tool/engines/mujs/mujs-1.3.2/build/release/mujs "${test_file}" 2>&1 )',
+        'hermes' : 'hermes_output=$( /home/fuzzli_tool/engines/hermes/hermes-0.12.0/build_release/bin/hermes -w "${test_file}" 2>&1 )',
+        'quickjs' : 'quickjs_output=$( /home/fuzzli_tool/engines/quickjs/quickjs-2021-03-27/qjs "${test_file}" 2>&1 )',
+        'jerryscript' : 'jerryscript_output=$( /home/fuzzli_tool/engines/jerryscript/jerryscript-2.4.0/jerryscript-2.4.0/build/bin/jerry "${test_file}" 2>&1 )',
+        'xs' : 'xs_output=$( /home/fuzzli_tool/engines/XS/moddable-4.2.1/build/bin/lin/release/xst "${test_file}" 2>&1 )',
+        'duktape' : 'duktape_output=$( /home/fuzzli_tool/engines/duktape/duktape-2.7.0/duk "${test_file}" 2>&1 )'
     }
     # Choose one from suspicious_outputs(BADCC). Version origianl and ours need to be same.
     goodcc = random.choice(normal_outputs)
@@ -100,7 +115,7 @@ fi
 """
 
     # Write down.
-    shfile_path = '/home/reduce/test.sh'
+    shfile_path = 'resources/test.sh'
     with open(shfile_path, "w") as f:
         f.write(template.replace("[REPLACE_HERE]", script_content))
 
@@ -123,19 +138,15 @@ def construct_and_reduce(suspicious_output, normal_outputs: list):
 class Reducer:
     def reduce_functional(self, suspicious_output, normal_outputs) -> str:
         simplified_testcase, simplify_duration_ms = construct_and_reduce(suspicious_output, normal_outputs)
-        if simplified_testcase is None or len(simplified_testcase) == 0:
-            simplified_testcase = testcase
         return simplified_testcase
     
     def reduce_performance(self, testcase, testcase_id, testbed_id):
         simplified_testcase = pireducer.simplify_one(testcase, testcase_id, testbed_id)
-        if simplified_testcase is None or len(simplified_testcase) == 0:
-            simplified_testcase = testcase
         return simplified_testcase
 
 if __name__ == '__main__':
     reducer = Reducer()
-    with open("/home/reduce/test.js", "r") as f:
+    with open("resources/test.js", "r") as f:
         testcase = f.read()
     result = config.harness.run_testcase(testcase)
     [suspicious_outputs, normal_outputs] = simplifyTestcaseCore.split_output(result)

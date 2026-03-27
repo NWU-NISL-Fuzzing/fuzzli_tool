@@ -5,7 +5,7 @@ import re
 
 logging.basicConfig(level=logging.INFO, filemode="w", filename="anomaly_processor.log")
 false_positive, real_bug, unprocessed = {}, {}, []
-performance_anomalies = 0
+performance_anomalies, functional_anomalies = 0, 0
 
 
 def update_dict(d, k, v):
@@ -16,6 +16,8 @@ def update_dict(d, k, v):
 
 
 def classify(testcase, outputs, output_id, testbed_id, bug_type):
+    global performance_anomalies, functional_anomalies
+
     # Check if this is a false positive triggered by ES6 features
     es6_features = ["let ", "const ", "=>", "`);", "`;", 
                     "Map", "Set", "Symbol", "Uint8Array", "Int8Array", "ArrayBuffer", 
@@ -27,6 +29,10 @@ def classify(testcase, outputs, output_id, testbed_id, bug_type):
         if es6_feature in testcase:
             # false_positive.append(output_id)
             update_dict(false_positive, "ES6", output_id)
+            if bug_type in ["Timeout", "Excessive time difference"]:
+                performance_anomalies -= 1
+            else:
+                functional_anomalies -= 1
             return True
             break
     if "Math." in testcase and testbed_id in [6, 12]:
@@ -204,7 +210,7 @@ def classify(testcase, outputs, output_id, testbed_id, bug_type):
 
 
 def main():
-    global false_positive, real_bug, unprocessed, performance_anomalies
+    global false_positive, real_bug, unprocessed, performance_anomalies, functional_anomalies
 
     db_file = 'fuzzli-ablation.db'
     # db_file = 'fuzzlil.db'
@@ -214,42 +220,48 @@ def main():
     cursor.execute(sql1)
     output_ids = cursor.fetchall()
     for bug_type, output_id in output_ids:
-        sql2 = f"SELECT testcase_id, testbed_id FROM Outputs where id = {output_id};"
+        sql2 = f"SELECT testcase_id, testbed_id FROM Outputs WHERE id = {output_id};"
         cursor.execute(sql2)
         # print(cursor.fetchone())
         testcase_id, testbed_id = cursor.fetchone()
-        sql3 = f"SELECT * FROM Outputs where testcase_id = {testcase_id};"
+        sql3 = f"SELECT * FROM Outputs WHERE testcase_id = {testcase_id};"
         cursor.execute(sql3)
         outputs = cursor.fetchall()
-        sql4 = f"SELECT testcase FROM Testcases where id = {testcase_id};"
+        sql4 = f"SELECT testcase FROM Testcases WHERE id = {testcase_id};"
         cursor.execute(sql4)
         testcase = cursor.fetchone()[0]
         if bug_type in ["Timeout", "Excessive time difference"]:
             performance_anomalies += 1
+        else:
+            functional_anomalies += 1
         processed = classify(testcase, outputs, output_id, testbed_id, bug_type)
         if not processed:
             unprocessed.append(output_id)
     unprocessed = list(set(unprocessed) - set(false_positive))
     with open("processed.txt", "r") as f:
         processed = eval(f.read())
-    todo = [15538, 15544, 15550, 15556, 15562, 15568, 15580, 15586, 15592, 15598, 70708, 70720, 77581, 77605,
-            127436, 127437, 127439, 127442, 127443, 127445, 127448, 127449, 127451, 127454, 127455, 127457, 
-            127460, 127461, 127463, 127466, 127467, 127469, 127472, 127473, 127475, 127490, 127491, 127493]
+    # todo = [15538, 15544, 15550, 15556, 15562, 15568, 15580, 15586, 15592, 15598, 70708, 70720, 77581, 77605,
+    #         127436, 127437, 127439, 127442, 127443, 127445, 127448, 127449, 127451, 127454, 127455, 127457, 
+    #         127460, 127461, 127463, 127466, 127467, 127469, 127472, 127473, 127475, 127490, 127491, 127493]
     # processed = []
-    # todo = []
+    todo = []
     unprocessed = list(set(unprocessed) - set(processed) - set(todo))
     print("false_positive_functional:", len(false_positive["functional"]))
     print("false_positive_performance:", len(false_positive["performance"]))
     print("false_positive_es6:", len(false_positive["ES6"]))
-    false_positive_performance_rate = len(false_positive["performance"]) / len(output_ids)
+    false_positive_performance_rate = len(false_positive["performance"]) / performance_anomalies
     print("false_positive_performance_rate:", false_positive_performance_rate)
+    false_positive_functional_rate = len(false_positive["functional"]) / functional_anomalies
+    print("false_positive_functional_rate:", false_positive_functional_rate)
     print("real_bug:", len(real_bug))
     print("unprocessed:", len(unprocessed))
     # 按升序排序
-    unprocessed = sorted(unprocessed)
-    logging.info("unprocessed:"+str(unprocessed))
-    logging.info("real_bug:"+str(real_bug))
+    # unprocessed = sorted(unprocessed)
+    # logging.info("unprocessed:"+str(unprocessed))
+    # logging.info("real_bug:"+str(real_bug))
     print("performance_anomalies:", performance_anomalies)
+    print("functional_anomalies:", functional_anomalies)
+    print("total:", len(output_ids))
 
 if __name__ == "__main__":
     main()

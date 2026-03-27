@@ -194,7 +194,8 @@ class DBOperation:
         return self.query_template(sql)
     
     def query_anomalies(self):
-        sql = "SELECT * FROM DifferentialTestResults WHERE bug_type = 'Excessive time difference'"
+        # sql = "SELECT * FROM DifferentialTestResults WHERE bug_type = 'Excessive time difference'"
+        sql = "SELECT * FROM DifferentialTestResults"
         return self.query_template(sql)
     
     def query_results_by_output_id(self, output_id: int):

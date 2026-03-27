@@ -17,6 +17,8 @@ sys.path.insert(0, src_path)
 from utils import crypto
 from Configer import Config
 import Result
+from Result import HarnessResult, Output
+from Reducer import simplifyTestcaseCore
 
 logging.basicConfig(level=logging.INFO,
                     format='%(pathname)s[line:%(lineno)d] - %(levelname)s: %(message)s')
@@ -100,7 +102,7 @@ class Fuzzer:
                 #     continue
                 uniformed_test_case = self.uniform(mutated_test_case)
                 new_differential_test_result = differential_test_result
-                self.config.database.insert_differential_test_results(new_differential_test_result, mutated_test_case)                
+                self.config.database.insert_differential_test_results(new_differential_test_result, uniformed_test_case)                
                 self.save_interesting_test_case(uniformed_test_case)
             self.config.database.update_sample_status(sample)  
 
@@ -166,26 +168,33 @@ class Fuzzer:
             # (1, 'Most pass *** run error', 203, None, None, None, None, None, None, None)
             anomaly_type = anomaly[1]
             output_id = anomaly[2]
+            testbed_id = self.config.database.query_testbed_by_output_id(output_id)
+            testcase, testcase_id = self.config.database.query_testcase_by_output_id(output_id)
+            # print(testcase)
+            # print(testcase_id)
             if anomaly_type in ["Excessive time difference", "Timeout"]:
-                testcase, testcase_id = self.config.database.query_testcase_by_output_id(output_id)
-                print(testcase)
-                print(testcase_id)
-                testbed_id = self.config.database.query_testbed_by_output_id(output_id)
                 simplified_test_case = self.config.reducer.reduce_performance(testcase, testcase_id, testbed_id)
             else:
                 results = self.config.database.query_results_by_output_id(output_id)
-                [suspicious_outputs, normal_outputs] = simplifyTestcaseCore.split_output(results)
+                harness_result = HarnessResult("")
+                for result in results:
+                    harness_result.add_output(Output(result[0], result[2], result[3], result[4], result[5], result[6], result[7]))
+                [suspicious_outputs, normal_outputs] = simplifyTestcaseCore.split_output(harness_result)
                 for suspicious_output in suspicious_outputs:
-                    if anomaly.testbed_id == suspicious_output.testbed_id:
+                    if testbed_id == suspicious_output.testbed:
                         current = suspicious_output
                         break
+                with open("resources/test.js", "w") as f:
+                    f.write(testcase)
                 simplified_test_case = self.config.reducer.reduce_functional(current, normal_outputs)
+            if simplified_test_case is None or len(simplified_test_case) == 0 or simplified_test_case == testcase:
+                continue
             uniformed_test_case = self.uniform(simplified_test_case)
             new_harness_result = self.config.harness.run_testcase(uniformed_test_case)
             new_differential_test_result = Result.differential_test(new_harness_result)
             if len(new_differential_test_result) == 0:
                 continue
-            self.config.database.insert_differential_test_results(new_differential_test_result, mutated_test_case)
+            self.config.database.insert_differential_test_results(new_differential_test_result, uniformed_test_case)
             self.save_interesting_test_case(uniformed_test_case)
         # self.config.database.update_sample_status(sample)
     

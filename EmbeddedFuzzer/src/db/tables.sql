@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS Corpus(
 
 CREATE UNIQUE INDEX IF NOT EXISTS Corpus_sample_index on Corpus(sample);
 
-CREATE TABLE IF NOT  EXISTS OriginalTestcases(
+DROP TABLE IF EXISTS OriginalTestcases;
+CREATE TABLE OriginalTestcases(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     testcase BLOB NOT NULL,
     sample_id INTEGER,
@@ -19,7 +20,8 @@ CREATE TABLE IF NOT  EXISTS OriginalTestcases(
 
 CREATE UNIQUE INDEX  IF NOT EXISTS orginal_testcase_index on OriginalTestcases(testcase);
 
-CREATE TABLE IF NOT  EXISTS Testcases(
+DROP TABLE IF EXISTS Testcases;
+CREATE TABLE Testcases(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     original_testcase_id INTEGER NOT NULL DEFAULT 0,
     testcase BLOB NOT NULL,
@@ -46,7 +48,8 @@ CREATE TABLE IF NOT EXISTS Engines(
 
 CREATE UNIQUE INDEX  IF NOT EXISTS engine_testbed_index on Engines(testbed);
 
-CREATE TABLE IF NOT EXISTS Outputs(
+DROP TABLE IF EXISTS Outputs;
+CREATE TABLE Outputs(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     testcase_id INTEGER NOT NULL,
     testbed_id INTEGER NOT NULL,
@@ -61,7 +64,8 @@ CREATE TABLE IF NOT EXISTS Outputs(
 	UNIQUE(testcase_id, testbed_id)
     );
 
-CREATE TABLE IF NOT EXISTS DifferentialTestResults(
+DROP TABLE IF EXISTS DifferentialTestResults;
+CREATE TABLE DifferentialTestResults(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     bug_type BLOB NOT NULL ,
     output_id INTEGER NOT NULL UNIQUE,

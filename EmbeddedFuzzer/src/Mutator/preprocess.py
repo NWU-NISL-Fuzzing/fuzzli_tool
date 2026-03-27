@@ -70,10 +70,10 @@ def saveNumber(testcase: str, conn):
 
 
 def save():
-    conn = sqlite3.connect('../workspace/fuzzlil-60000.db')
+    conn = sqlite3.connect('../workspace/fuzzli-ablation.db')
     cursor = conn.cursor()
     # 新建列flag，默认值为0
-    cursor.execute("ALTER TABLE corpus ADD COLUMN flag TEXT DEFAULT 0")
+    # cursor.execute("ALTER TABLE corpus ADD COLUMN flag TEXT DEFAULT 0")
     cursor.execute("SELECT sample FROM corpus where flag=0")
     rows = cursor.fetchall()   
     sample_data_list = []

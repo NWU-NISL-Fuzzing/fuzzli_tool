@@ -34,7 +34,7 @@ def generate_es_code(ast: dict):
 def tokenize(js_source_code: str) -> list:
 
     split_into_token = execjs.compile("""
-        // var esprima = require("esprima");
+        // var esprima = require("/home/fuzzli_tool/EmbeddedFuzzer/node_modules/esprima");
         var esprima = require("../EmbeddedFuzzer/node_modules/esprima");
         function tokenize(code){
             return esprima.tokenize(code);;

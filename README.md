@@ -17,6 +17,10 @@ docker build -t fuzzli .
 docker run -d -it -p xxxx:22 --name fuzzli fuzzli:v1.0
 ```
 
+## Update
+
+Most absolute paths in the source code have been modified to support redevelopment. However, the paths for the LiJS engines remain absolute, which means that user should either ensure the path `/home/fuzzli_tool/engines` exit or modify the path in the source code.
+
 ## Usage
 
 ### Configuration

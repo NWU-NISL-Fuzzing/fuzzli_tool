@@ -1,5 +1,8 @@
 {
   "dependencies": {
+    "@babel/generator": "^7.27.5",
+    "@babel/parser": "^7.27.5",
+    "@babel/traverse": "^7.27.4",
     "default-require-extensions": "^3.0.1",
     "escodegen": "^2.1.0",
     "esprima": "^4.0.1",
@@ -9,6 +12,7 @@
     "require-main-filename": "^2.0.0"
   },
   "devDependencies": {
+    "babel-cli": "^6.26.0",
     "flow-bin": "^0.196.3"
   }
 }
